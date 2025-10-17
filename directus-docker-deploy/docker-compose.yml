@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    build:
+      context: ./postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: directus
+      POSTGRES_USER: directus_user
+      POSTGRES_PASSWORD: directus_password
+
+  directus:
+    build:
+      context: ./directus
+    depends_on:
+      - postgres
+    environment:
+      DIRECTUS_DATABASE_HOST: postgres
+      DIRECTUS_DATABASE_PORT: 5432
+      DIRECTUS_DATABASE_NAME: directus
+      DIRECTUS_DATABASE_USER: directus_user
+      DIRECTUS_DATABASE_PASSWORD: directus_password
+    ports:
+      - "8055:8055"
+    volumes:
+      - directus_data:/directus/data
+
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - directus
+
+volumes:
+  postgres_data:
+  directus_data:

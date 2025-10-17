@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  directus:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    ports:
+      - "8055:8055"
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/directus
+      - ADMIN_EMAIL=admin@example.com
+      - ADMIN_PASSWORD=admin_password
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_DB=directus
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
