@@ -1,0 +1,40 @@
+services:
+  directus:
+    image: directus/directus:latest
+    restart: unless-stopped
+    ports:
+      - "8055:8055"
+    env_file:
+      - .env
+    environment:
+      # Force PostgreSQL connection
+      DB_CLIENT: pg
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SSL: "true"
+      DB_SSL_REJECT_UNAUTHORIZED: "false"
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      
+      # Admin and secrets
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      KEY: ${KEY}
+      SECRET: ${SECRET}
+      
+      # Other settings
+      PUBLIC_URL: ${PUBLIC_URL}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      DISABLE_TELEMETRY: ${DISABLE_TELEMETRY}
+      
+      # Extensions
+      EXTENSIONS_AUTO_RELOAD: "false"
+    volumes:
+      - uploads:/directus/uploads
+      - extensions:/directus/extensions
+
+volumes:
+  uploads:
+  extensions:

@@ -1,0 +1,26 @@
+{
+  "name": "directus-extension-theme-claude-light",
+  "version": "1.0.0",
+  "description": "A light theme with burgundy accents and sharp corners inspired by Claude UI",
+  "type": "module",
+  "directus:extension": {
+    "type": "theme",
+    "path": "dist/index.js",
+    "source": "src/index.ts",
+    "host": "^10.0.0 || ^11.0.0"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build -w --no-minify"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^12.0.2",
+    "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-theme"
+  ],
+  "license": "MIT"
+}
