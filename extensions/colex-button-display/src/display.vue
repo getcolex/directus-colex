@@ -76,27 +76,48 @@ export default defineComponent({
 
 		// This function checks the status of the previous task
 		async function checkPreviousTaskStatus(): Promise<void> {
-			isCheckingStatus.value = true; // Start check
-			const currentTaskId = (value.value as any).task_id;
-
-			// Find the index of the current item in the full list of items
-			const currentIndex = items.value.findIndex((task: any) => task.id === currentTaskId);
-
-			// If the current item is not found or it's the first item in the array
-			if (currentIndex === -1 || currentIndex === 0) {
-				isButtonDisabled.value = false;
+			isCheckingStatus.value = true;
+		
+			try {
+				const currentTaskId = (value.value as any)?.task_id;
+		
+				if (!currentTaskId || !items.value || items.value.length === 0) {
+					isButtonDisabled.value = true;
+					return;
+				}
+		
+				// Find the current task from the items list
+				const currentTask = (items.value as any[]).find((task: any) => task.name === currentTaskId);
+		
+				if (!currentTask) {
+					isButtonDisabled.value = true; // Current task not found
+					return;
+				}
+		
+				const dependentTaskNamesStr = currentTask.dependent_tasks.split(',');
+				// If there are no dependent tasks, the button should be enabled.
+				if (!dependentTaskNamesStr) {
+					isButtonDisabled.value = false;
+					return;
+				}
+		
+				const dependentTaskNames = dependentTaskNamesStr.split(',').map((name: string) => name.trim());
+		
+				// Check if all dependent tasks are 'done'
+				const allDependenciesMet = dependentTaskNames.every((depName: string) => {
+					const dependentTask = (items.value as any[]).find((task: any) => task.name === depName);
+					// If a dependent task is not found or its status is not 'done', the condition is not met.
+					return dependentTask && dependentTask.status === 'done';
+				});
+		
+				isButtonDisabled.value = !allDependenciesMet;
+			} catch (error) {
+				console.error('Error in checkPreviousTaskStatus:', error);
+				isButtonDisabled.value = true; // Disable button on error
+			} finally {
 				isCheckingStatus.value = false;
-				return;
 			}
-
-			// Get the previous task by its index
-			const previousTask = items.value[currentIndex - 1];
-
-			// Enable the button only if the previous task exists and is 'published'
-			const isDisabled = !(previousTask && previousTask.status === 'published');
-			isButtonDisabled.value = isDisabled;
-			isCheckingStatus.value = false;
-		} 
+		}  
 
 		watchEffect(async() => {
 			// This will run on setup and whenever item.value changes,
