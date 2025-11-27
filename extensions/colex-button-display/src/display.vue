@@ -80,14 +80,17 @@ export default defineComponent({
 		
 			try {
 				const currentTaskId = (value.value as any)?.task_id;
-		
+				const currentProjectId = (value.value as any)?.project_id;
+				
 				if (!currentTaskId || !items.value || items.value.length === 0) {
 					isButtonDisabled.value = true;
 					return;
 				}
 		
 				// Find the current task from the items list
-				const currentTask = (items.value as any[]).find((task: any) => task.name === currentTaskId);
+				const currentTask = (items.value as any[]).find(
+					(task: any) => task.name === currentTaskId && (!currentProjectId || task.project_id === currentProjectId)
+				);
 		
 				if (!currentTask) {
 					isButtonDisabled.value = true; // Current task not found
@@ -105,7 +108,9 @@ export default defineComponent({
 		
 				// Check if all dependent tasks are 'done'
 				const allDependenciesMet = dependentTaskNames.every((depName: string) => {
-					const dependentTask = (items.value as any[]).find((task: any) => task.name === depName);
+					const dependentTask = (items.value as any[]).find(
+						(task: any) => task.name === depName && (!currentProjectId || task.project_id === currentProjectId)
+					);
 					// If a dependent task is not found or its status is not 'done', the condition is not met.
 					return dependentTask && dependentTask.status === 'done';
 				});
