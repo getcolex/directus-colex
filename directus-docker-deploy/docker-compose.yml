@@ -57,6 +57,7 @@ services:
       - extensions:/directus/extensions
       - ./extensions/directus-extension-theme-claude-light:/directus/extensions/directus-extension-theme-claude-light
       - ./extensions/directus-extension-theme-claude-dark:/directus/extensions/directus-extension-theme-claude-dark
+      - ./extensions/colex-button-display:/directus/extensions/colex-button-display
 
 volumes:
   uploads:

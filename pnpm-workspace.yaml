@@ -5,6 +5,7 @@ packages:
   - sdk
   - packages/*
   - tests/*
+  - extensions/*
 
 catalog:
   '@authenio/samlify-node-xmllint': 2.0.0
