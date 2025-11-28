@@ -1,40 +1,63 @@
-version: '3.8'
-
 services:
-  postgres:
-    build:
-      context: ./postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_DB: directus
-      POSTGRES_USER: directus_user
-      POSTGRES_PASSWORD: directus_password
-
   directus:
-    build:
-      context: ./directus
-    depends_on:
-      - postgres
-    environment:
-      DIRECTUS_DATABASE_HOST: postgres
-      DIRECTUS_DATABASE_PORT: 5432
-      DIRECTUS_DATABASE_NAME: directus
-      DIRECTUS_DATABASE_USER: directus_user
-      DIRECTUS_DATABASE_PASSWORD: directus_password
+    image: directus/directus:latest
+    restart: unless-stopped
     ports:
       - "8055:8055"
-    volumes:
-      - directus_data:/directus/data
+    env_file:
+      - .env
+    environment:
+      # Database connection
+      DB_CLIENT: pg
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_SSL: ${DB_SSL}
+      DB_SSL_REJECT_UNAUTHORIZED: ${DB_SSL_REJECT_UNAUTHORIZED}
+      DB_SCHEMA: public
 
-  nginx:
-    build:
-      context: ./nginx
-    ports:
-      - "80:80"
-    depends_on:
-      - directus
+      # Admin setup
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+
+      # Secrets
+      KEY: ${KEY}
+      SECRET: ${SECRET}
+
+      # Other settings
+      PUBLIC_URL: ${PUBLIC_URL}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      DISABLE_TELEMETRY: ${DISABLE_TELEMETRY}
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      # Force Schema Detection
+      DB_EXCLUDE_TABLES: ""
+      EXTENSIONS_AUTO_RELOAD: true
+      EXTENSIONS_PATH: /directus/extensions
+      LOG_LEVEL: debug
+      # Files storage
+      STORAGE_LOCATIONS: s3
+
+      # S3 driver pointed to Spaces
+      STORAGE_S3_DRIVER: s3
+      STORAGE_S3_KEY: DO00VZMKM3ZUCHWJBU2M
+      STORAGE_S3_SECRET: BBFSOO6qudhACi9DSu/UdvvNOUmRXUIyZ9qNvqujGQI
+      STORAGE_S3_BUCKET: colex-images
+      STORAGE_S3_REGION: blr1
+      STORAGE_S3_ENDPOINT: blr1.digitaloceanspaces.com
+      STORAGE_S3_FORCE_PATH_STYLE: false
+      STORAGE_S3_ACL: private
+
+      # If you've enabled the Spaces CDN, set this so Directus generates CDN URLs:
+      CDN_BASE_URL: https://colex-images.blr1.cdn.digitaloceanspaces.com
+
+    volumes:
+      - uploads:/directus/uploads
+      - extensions:/directus/extensions
+      - ./extensions/directus-extension-theme-claude-light:/directus/extensions/directus-extension-theme-claude-light
+      - ./extensions/directus-extension-theme-claude-dark:/directus/extensions/directus-extension-theme-claude-dark
 
 volumes:
-  postgres_data:
-  directus_data:
+  uploads:
+  extensions:

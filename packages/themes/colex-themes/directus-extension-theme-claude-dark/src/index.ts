@@ -1,0 +1,226 @@
+import { defineTheme } from '@directus/extensions-sdk';
+
+export default defineTheme({
+  id: 'colex-dark',
+  name: 'Colex Dark',
+  appearance: 'dark',
+  rules: {
+    // === GLOBAL COLORS ===
+    background: '#1A1A1A',
+    backgroundAccent: '#2D2D2D',
+    backgroundNormal: '#262626',
+    backgroundSubdued: '#1F1F1F',
+
+    foreground: '#F8F7F4',
+    foregroundAccent: '#FFFFFF',
+    foregroundSubdued: '#A8A29E',
+
+    // === PRIMARY (Light - matches text for icons/buttons) ===
+    primary: '#F8F7F4',
+    primaryBackground: 'color-mix(in srgb, #F8F7F4 10%, transparent)',
+    primarySubdued: 'color-mix(in srgb, #F8F7F4 50%, #1A1A1A)',
+    primaryAccent: '#FFFFFF',
+
+    // === SECONDARY (Lighter burgundy for dark mode) ===
+    secondary: '#8B4A5E',
+    secondaryBackground: 'color-mix(in srgb, #8B4A5E 10%, transparent)',
+    secondarySubdued: 'color-mix(in srgb, #8B4A5E 50%, #1A1A1A)',
+    secondaryAccent: '#A65D73',
+
+    // === STATUS COLORS (Brighter for dark mode) ===
+    success: '#22C55E',
+    successBackground: 'color-mix(in srgb, #22C55E 10%, transparent)',
+    successSubdued: 'color-mix(in srgb, #22C55E 50%, #1A1A1A)',
+    successAccent: '#4ADE80',
+
+    warning: '#F59E0B',
+    warningBackground: 'color-mix(in srgb, #F59E0B 10%, transparent)',
+    warningSubdued: 'color-mix(in srgb, #F59E0B 50%, #1A1A1A)',
+    warningAccent: '#FBBF24',
+
+    danger: '#EF4444',
+    dangerBackground: 'color-mix(in srgb, #EF4444 10%, transparent)',
+    dangerSubdued: 'color-mix(in srgb, #EF4444 50%, #1A1A1A)',
+    dangerAccent: '#F87171',
+
+    // === BORDERS (Warm dark tones) ===
+    borderColor: '#44403C',
+    borderColorAccent: '#57534E',
+    borderColorSubdued: '#292524',
+    borderRadius: '4px',
+    borderWidth: '1px',
+
+    // === FONTS ===
+    fontFamily: {
+      display: '"Inter", sans-serif',
+      sansSerif: '"Inter", sans-serif',
+      serif: '"Merriweather", serif',
+      monospace: '"JetBrains Mono", monospace',
+    },
+
+    // === NAVIGATION (Left module bar) ===
+    navigation: {
+      background: '#1A1A1A',
+      backgroundAccent: '#2D2D2D',
+      borderColor: '#44403C',
+      borderWidth: '1px',
+
+      project: {
+        background: '#1A1A1A',
+        foreground: '#F8F7F4',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        borderColor: '#44403C',
+        borderWidth: '1px',
+      },
+
+      modules: {
+        background: '#1A1A1A',
+        button: {
+          background: '#1A1A1A',
+          backgroundHover: '#2D2D2D',
+          backgroundActive: '#F8F7F4',
+          foreground: '#A8A29E',
+          foregroundHover: '#F8F7F4',
+          foregroundActive: '#1A1A1A',
+        },
+      },
+    },
+
+    // === SIDEBAR ===
+    sidebar: {
+      background: '#1A1A1A',
+      foreground: '#F8F7F4',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      borderColor: '#44403C',
+      borderWidth: '1px',
+
+      section: {
+        toggle: {
+          icon: {
+            foreground: '#A8A29E',
+            foregroundHover: '#F8F7F4',
+            foregroundActive: '#8B4A5E',
+          },
+          foreground: '#F8F7F4',
+          foregroundHover: '#F8F7F4',
+          foregroundActive: '#8B4A5E',
+          background: '#1A1A1A',
+          backgroundHover: '#2D2D2D',
+          backgroundActive: 'rgba(139, 74, 94, 0.15)',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          borderColor: '#44403C',
+          borderWidth: '1px',
+        },
+      },
+    },
+
+    // === HEADER ===
+    header: {
+      background: '#1A1A1A',
+      borderColor: '#44403C',
+      borderWidth: '1px',
+      boxShadow: 'none',
+      headline: {
+        foreground: '#A8A29E',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      },
+      title: {
+        foreground: '#F8F7F4',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        fontWeight: '600',
+      },
+    },
+
+    // === FORMS ===
+    form: {
+      columnGap: '32px',
+      rowGap: '24px',
+
+      field: {
+        label: {
+          foreground: '#A8A29E',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        },
+        input: {
+          background: '#2D2D2D',
+          backgroundSubdued: '#262626',
+          foreground: '#F8F7F4',
+          foregroundSubdued: '#A8A29E',
+          borderColor: '#44403C',
+          borderColorHover: '#57534E',
+          borderColorFocus: '#8B4A5E',
+          boxShadow: 'none',
+          boxShadowHover: 'none',
+          boxShadowFocus: '0 0 0 2px rgba(139, 74, 94, 0.3)',
+          height: '44px',
+          padding: '12px',
+        },
+      },
+    },
+
+    // === PUBLIC PAGES (Login, etc.) ===
+    public: {
+      background: '#1A1A1A',
+      foreground: '#F8F7F4',
+      foregroundAccent: '#A8A29E',
+
+      art: {
+        background: '#1A1A1A',
+        primary: '#8B4A5E',
+        secondary: '#2D2D2D',
+        speed: '2',
+      },
+
+      form: {
+        field: {
+          input: {
+            background: '#2D2D2D',
+            foreground: '#F8F7F4',
+            backgroundSubdued: '#262626',
+            foregroundSubdued: '#A8A29E',
+            borderColor: '#44403C',
+            borderColorHover: '#57534E',
+            borderColorFocus: '#8B4A5E',
+            boxShadow: 'none',
+            boxShadowHover: 'none',
+            boxShadowFocus: '0 0 0 2px rgba(139, 74, 94, 0.3)',
+          },
+        },
+      },
+    },
+
+    // === POPOVERS ===
+    popover: {
+      menu: {
+        background: '#2D2D2D',
+        borderRadius: '4px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+      },
+    },
+
+    // === BANNER ===
+    banner: {
+      background: '#F8F7F4',
+      padding: '40px',
+      avatar: {
+        foreground: '#1A1A1A',
+      },
+      headline: {
+        foreground: '#A8A29E',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      },
+      title: {
+        foreground: '#1A1A1A',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        fontWeight: '600',
+      },
+      subtitle: {
+        foreground: '#78716C',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      },
+      art: {
+        foreground: '#D6D3D1',
+      },
+    },
+  },
+});
