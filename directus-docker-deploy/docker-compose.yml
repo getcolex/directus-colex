@@ -55,8 +55,8 @@ services:
     volumes:
       - uploads:/directus/uploads
       - extensions:/directus/extensions
-      - ./extensions/directus-extension-theme-claude-light:/directus/extensions/directus-extension-theme-claude-light
-      - ./extensions/directus-extension-theme-claude-dark:/directus/extensions/directus-extension-theme-claude-dark
+      - ./extensions/directus-extension-wcag-theme-colex-light:/directus/extensions/directus-extension-wcag-theme-colex-light
+      - ./extensions/directus-extension-wcag-theme-colex-dark:/directus/extensions/directus-extension-wcag-theme-colex-dark
 
 volumes:
   uploads:
