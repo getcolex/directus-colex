@@ -1,7 +1,13 @@
 {
-  "name": "directus-extension-theme-claude-dark",
+  "name": "directus-extension-wcag-theme-colex-light",
   "version": "1.0.0",
+  "description": "WCAG AA compliant light theme with burgundy accents",
   "type": "module",
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-custom-theme"
+  ],
   "directus:extension": {
     "type": "theme",
     "path": "dist/index.js",
@@ -15,5 +21,6 @@
   "devDependencies": {
     "@directus/extensions-sdk": "^12.0.2",
     "typescript": "^5.7.2"
-  }
+  },
+  "license": "MIT"
 }
