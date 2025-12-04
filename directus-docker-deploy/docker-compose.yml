@@ -57,6 +57,10 @@ services:
       - extensions:/directus/extensions
       - ./extensions/directus-extension-wcag-theme-colex-light:/directus/extensions/directus-extension-wcag-theme-colex-light
       - ./extensions/directus-extension-wcag-theme-colex-dark:/directus/extensions/directus-extension-wcag-theme-colex-dark
+      # Dynamic button extensions
+      - ./extensions/directus-extension-configurable-button:/directus/extensions/directus-extension-configurable-button
+      - ./extensions/directus-extension-review-module:/directus/extensions/directus-extension-review-module
+      - ./extensions/directus-hook-populate-button-context:/directus/extensions/directus-hook-populate-button-context
 
 volumes:
   uploads:
