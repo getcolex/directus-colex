@@ -1,0 +1,19 @@
+{
+  "name": "directus-extension-review-module",
+  "version": "1.0.0",
+  "description": "Configurable review interface for task outputs with gallery, table, and form layouts",
+  "type": "module",
+  "directus:extension": {
+    "type": "module",
+    "path": "dist/index.js",
+    "source": "src/index.ts",
+    "host": "^11.0.0"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build --watch"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^10.0.0"
+  }
+}
