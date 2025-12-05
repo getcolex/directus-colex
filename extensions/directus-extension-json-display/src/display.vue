@@ -35,7 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 	maxDepth: 3,
 	collapsed: false,
 	showLineNumbers: false,
-	maxHeight: 200,
+	maxHeight: 400,
 	colorScheme: 'default',
 });
 
@@ -196,11 +196,13 @@ function formatValue(value: any): string {
 .json-display {
 	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
 	font-size: 12px;
-	line-height: 1.5;
+	line-height: 1.6;
 	overflow: auto;
-	padding: 8px;
-	border-radius: 4px;
+	padding: 12px;
+	border-radius: 6px;
 	background: var(--json-bg, var(--background-subdued));
+	min-height: 100px;
+	max-height: 400px;
 }
 
 .json-content {
