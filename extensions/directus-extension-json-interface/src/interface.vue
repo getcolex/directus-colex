@@ -217,6 +217,19 @@ const JsonNode = defineComponent({
 		return () => {
 			const children: any[] = [];
 
+			// Add collapse toggle FIRST (on the left) for objects/arrays
+			if ((isObject.value || isArray.value) && canCollapse.value) {
+				children.push(
+					h('span', { 
+						class: 'collapse-toggle',
+						onClick: toggleCollapse
+					}, isCollapsed.value ? '▶' : '▼')
+				);
+			} else if (!isObject.value && !isArray.value) {
+				// Add spacer for alignment on primitive values
+				children.push(h('span', { class: 'collapse-spacer' }, ''));
+			}
+
 			if (nodeProps.keyName) {
 				children.push(
 					h('span', { class: 'json-key' }, `"${nodeProps.keyName}"`),
@@ -234,15 +247,6 @@ const JsonNode = defineComponent({
 				const entries = isArray.value 
 					? (nodeProps.data as any[]).map((v, i) => [i.toString(), v])
 					: Object.entries(nodeProps.data as object);
-
-				if (canCollapse.value) {
-					children.push(
-						h('span', { 
-							class: 'collapse-toggle',
-							onClick: toggleCollapse
-						}, isCollapsed.value ? '▶' : '▼')
-					);
-				}
 
 				children.push(h('span', { class: 'json-bracket' }, openBracket));
 
@@ -418,12 +422,12 @@ function formatValue(value: any): string {
 }
 
 .json-preview {
-	padding: 12px;
-	max-height: 300px;
+	padding: 16px;
+	max-height: 400px;
 	overflow: auto;
 	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
-	font-size: 12px;
-	line-height: 1.6;
+	font-size: 14px;
+	line-height: 1.8;
 }
 
 /* JSON Node Styles */
@@ -466,22 +470,33 @@ function formatValue(value: any): string {
 
 .json-children {
 	display: block;
-	padding-left: 20px;
+	padding-left: 24px;
+	border-left: 1px solid var(--border-subdued);
+	margin-left: 8px;
 }
 
 .json-item {
 	display: block;
+	padding: 2px 0;
 }
 
 .collapse-toggle {
 	cursor: pointer;
 	color: var(--foreground-subdued);
-	margin-right: 4px;
-	font-size: 10px;
+	margin-right: 6px;
+	font-size: 12px;
+	width: 14px;
+	display: inline-block;
+	text-align: center;
 }
 
 .collapse-toggle:hover {
 	color: var(--primary);
+}
+
+.collapse-spacer {
+	width: 20px;
+	display: inline-block;
 }
 
 .collapsed-info {
