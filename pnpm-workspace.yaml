@@ -152,7 +152,7 @@ catalog:
   copyfiles: 2.4.1
   cors: 2.8.5
   cron-parser: 4.9.0
-  cropperjs: 1.6.2
+  cropperjs: 2.0.1
   date-fns: 4.1.0
   decamelize: 6.0.0
   deep-diff: 1.0.2
