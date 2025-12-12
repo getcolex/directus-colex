@@ -51,3 +51,26 @@ TODO
 /tests/blackbox/server-log-*
 /tests/blackbox/sequencer-data.json
 /packages/extensions-sdk/temp-extension-*/
+
+# Extension build artifacts
+extensions/*/dist/
+extensions/**/dist/
+**/extensions/*/dist/
+
+# Additional build artifacts  
+# Note: Only ignore generated .d.ts files in build directories, not source .d.ts files
+dist/**/*.d.ts
+build/**/*.d.ts
+*.js.map
+*.d.ts.map
+
+# Package manager artifacts
+*.tgz
+*.tar.gz
+package-lock.json
+yarn.lock
+
+# Development and testing artifacts
+.cache/
+.parcel-cache/
+*.lcov
