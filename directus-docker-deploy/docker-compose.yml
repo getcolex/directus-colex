@@ -33,7 +33,7 @@ services:
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       # Force Schema Detection
       DB_EXCLUDE_TABLES: ""
-      EXTENSIONS_AUTO_RELOAD: true
+      EXTENSIONS_AUTO_RELOAD: "true"
       EXTENSIONS_PATH: /directus/extensions
       LOG_LEVEL: debug
       # Files storage
@@ -46,7 +46,7 @@ services:
       STORAGE_S3_BUCKET: colex-images
       STORAGE_S3_REGION: blr1
       STORAGE_S3_ENDPOINT: blr1.digitaloceanspaces.com
-      STORAGE_S3_FORCE_PATH_STYLE: false
+      STORAGE_S3_FORCE_PATH_STYLE: "false"
       STORAGE_S3_ACL: private
 
       # If you've enabled the Spaces CDN, set this so Directus generates CDN URLs:
@@ -62,6 +62,8 @@ services:
       - ./extensions/directus-extension-review-module:/directus/extensions/directus-extension-review-module
       - ./extensions/directus-hook-populate-button-context:/directus/extensions/directus-hook-populate-button-context
       - ./extensions/directus-hook-task-dependency-v2:/directus/extensions/directus-hook-task-dependency-v2
+      - ./extensions/directus-extension-json-interface:/directus/extensions/directus-extension-json-interface
+      - ./extensions/colex-button-display:/directus/extensions/colex-button-display
 
 volumes:
   uploads:
