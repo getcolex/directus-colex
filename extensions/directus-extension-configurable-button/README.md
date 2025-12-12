@@ -15,7 +15,7 @@ A powerful state-driven button display extension that enables dynamic action but
 - [x] **State-Driven Visibility**: Filter buttons per row based on item field values
 - [x] **Multiple Button Configs**: Support for 10+ button configurations per field
 - [x] **Conditional Disabling**: Disable buttons based on conditions
-- [x] **6 Action Types**: Links, Webhooks, Flows, Navigation, Modules, Drawers
+- [x] **9 Action Types**: Links, Webhooks, Flows, Navigation, Modules, Drawers, Create Item, Create Item Single, Review Outputs
 - [x] **Template Interpolation**: Use `{field_name}` syntax for dynamic values
 - [x] **Confirmation Dialogs**: Optional pre-action confirmations
 - [x] **Multiple Layouts**: Horizontal, Vertical, or Dropdown menu
@@ -120,7 +120,7 @@ Each button configuration has a `visibility_condition` that determines **when it
 - ✅ **Contextual Per Row**: Each row shows only relevant buttons, not all configurations
 - ✅ **Multiple Buttons**: Assign multiple button configurations to a single field
 - ✅ **Conditional Disabling**: Disable buttons based on conditions
-- ✅ **6 Action Types**: Links, Webhooks, Flows, Navigation, Modules, Drawers
+- ✅ **9 Action Types**: Links, Webhooks, Flows, Navigation, Modules, Drawers, Create Item, Create Item Single, Review Outputs
 - ✅ **Template Interpolation**: Use `{field_name}` syntax for dynamic values
 - ✅ **Confirmation Dialogs**: Optional pre-action confirmations
 - ✅ **Multiple Layouts**: Horizontal, Vertical, or Dropdown menu
@@ -345,6 +345,65 @@ Conditions evaluate against the current item's field values.
     "collection": "task_results",
     "item_id": "{task_result_id}",
     "mode": "view"
+  }
+}
+```
+
+### 7. Create Item
+```json
+{
+  "action_type": "create_item",
+  "action_config": {
+    "collection": "design_outputs",
+    "prefill": {
+      "task_id": "{id}",
+      "status": "pending"
+    }
+  }
+}
+```
+
+### 8. Create Item Single (Prevents Duplicates)
+Creates an item only if one doesn't already exist. If an item exists, navigates to the existing item instead.
+
+```json
+{
+  "action_type": "create_item_single",
+  "action_config": {
+    "collection": "design_outputs",
+    "prefill": {
+      "task_id": "{id}"
+    },
+    "lookup_filter": {
+      "task_id": { "_eq": "{id}" }
+    },
+    "existing_message": "Output already exists for this task"
+  }
+}
+```
+
+**Configuration:**
+- `collection` (required): Target collection name
+- `prefill` (optional): Fields to pre-fill in the create form
+- `lookup_filter` (optional): Filter to check for existing items. If omitted, auto-generates from `prefill` values
+- `existing_message` (optional): Message shown when item already exists (default: "Item already exists")
+
+**Behavior:**
+1. Checks if an item exists matching the `lookup_filter`
+2. If exists → Shows info notification and navigates to the existing item
+3. If not exists → Opens create drawer with prefilled values
+
+### 9. Review Outputs
+```json
+{
+  "action_type": "review_outputs",
+  "action_config": {
+    "collection": "design_outputs",
+    "layout": "gallery",
+    "filter": { "task_id": { "_eq": "{id}" } },
+    "allow_edit": true,
+    "allow_delete": false,
+    "title": "Review Outputs"
   }
 }
 ```
