@@ -61,6 +61,7 @@ services:
       - ./extensions/directus-extension-configurable-button:/directus/extensions/directus-extension-configurable-button
       - ./extensions/directus-extension-review-module:/directus/extensions/directus-extension-review-module
       - ./extensions/directus-hook-populate-button-context:/directus/extensions/directus-hook-populate-button-context
+      - ./extensions/directus-hook-task-dependency-v2:/directus/extensions/directus-hook-task-dependency-v2
 
 volumes:
   uploads:
