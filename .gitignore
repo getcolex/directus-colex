@@ -41,6 +41,10 @@ debug
 # Temporary files
 TODO
 
+# Claude Code (local only)
+.claude/
+CLAUDE.md
+
 # Directus
 *.db
 /schema.yaml
