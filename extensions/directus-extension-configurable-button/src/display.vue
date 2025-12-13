@@ -730,21 +730,16 @@ export default defineComponent({
 				
 				let response;
 				if (isExternalUrl) {
-					// Use fetch for external webhooks
-					const fetchResponse = await fetch(url, {
+					// Proxy external webhooks through Directus backend to avoid CORS
+					// Use the utils/request endpoint which proxies external requests
+					response = await api.post('/utils/request', {
+						url: url,
 						method: method.toUpperCase(),
 						headers: {
 							'Content-Type': 'application/json',
 						},
 						body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
 					});
-
-					if (!fetchResponse.ok) {
-						throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
-					}
-
-					const data = await fetchResponse.json().catch(() => null);
-					response = { data };
 				} else {
 					// Use Directus API client for internal paths
 					response = await api.request({
