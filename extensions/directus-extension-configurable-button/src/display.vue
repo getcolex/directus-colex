@@ -619,9 +619,22 @@ export default defineComponent({
 			// Merge button config with item fields for dynamic configuration
 			const baseConfig = interpolateObject(actionConfig, item);
 			const config = { ...baseConfig, ...item };
-			// Map output_collection to collection for handler compatibility
+			
+			// Map field names for handler compatibility
 			if (config.output_collection && !config.collection) {
 				config.collection = config.output_collection;
+			}
+			if (config.webhook_url && !config.url) {
+				config.url = config.webhook_url;
+			}
+			if (config.webhook_method && !config.method) {
+				config.method = config.webhook_method;
+			}
+			if (config.link_url && !config.url) {
+				config.url = config.link_url;
+			}
+			if (config.module_path && !config.path) {
+				config.path = config.module_path;
 			}
 
 			loadingButtons.value[button.id] = true;
@@ -921,20 +934,12 @@ export default defineComponent({
 			// Build lookup filter from prefill if not explicitly provided
 			// This allows checking if an item with the same key fields already exists
 			let filterToUse = lookup_filter;
-			if (Object.keys(lookup_filter).length === 0) {
-				// Default: Use project_id as the primary lookup key if available
-				// This ensures one item per project
-				if (config.project_id) {
-					filterToUse = {
-						project_id: { _eq: config.project_id }
-					};
-				} else if (Object.keys(enhancedPrefill).length > 0) {
-					// Fallback: Use all prefill values as the lookup filter
-					filterToUse = {};
-					for (const [key, value] of Object.entries(enhancedPrefill)) {
-						if (value !== null && value !== undefined && value !== '') {
-							filterToUse[key] = { _eq: value };
-						}
+			if (Object.keys(lookup_filter).length === 0 && Object.keys(enhancedPrefill).length > 0) {
+				// Use prefill values as the lookup filter
+				filterToUse = {};
+				for (const [key, value] of Object.entries(enhancedPrefill)) {
+					if (value !== null && value !== undefined && value !== '') {
+						filterToUse[key] = { _eq: value };
 					}
 				}
 			}
