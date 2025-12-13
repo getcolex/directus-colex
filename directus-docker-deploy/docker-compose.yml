@@ -1,16 +1,4 @@
 services:
-  postgres:
-    image: postgis/postgis:13-3.4-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_DATABASE}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
   directus:
     image: directus/directus:latest
     restart: unless-stopped
@@ -18,8 +6,6 @@ services:
       - "8055:8055"
     env_file:
       - .env
-    depends_on:
-      - postgres
     environment:
       # Database connection
       DB_CLIENT: pg
@@ -47,27 +33,38 @@ services:
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       # Force Schema Detection
       DB_EXCLUDE_TABLES: ""
-      EXTENSIONS_AUTO_RELOAD: true
+      EXTENSIONS_AUTO_RELOAD: "true"
       EXTENSIONS_PATH: /directus/extensions
       LOG_LEVEL: debug
+      # Files storage
+      STORAGE_LOCATIONS: s3
 
-      # OpenRouter API for Intelligence Chat
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      # S3 driver pointed to Spaces
+      STORAGE_S3_DRIVER: s3
+      STORAGE_S3_KEY: DO00VZMKM3ZUCHWJBU2M
+      STORAGE_S3_SECRET: BBFSOO6qudhACi9DSu/UdvvNOUmRXUIyZ9qNvqujGQI
+      STORAGE_S3_BUCKET: colex-images
+      STORAGE_S3_REGION: blr1
+      STORAGE_S3_ENDPOINT: blr1.digitaloceanspaces.com
+      STORAGE_S3_FORCE_PATH_STYLE: "false"
+      STORAGE_S3_ACL: private
 
-      # Lead Gen APIs
-      EXA_API_KEY: ${EXA_API_KEY}
+      # If you've enabled the Spaces CDN, set this so Directus generates CDN URLs:
+      CDN_BASE_URL: https://colex-images.blr1.cdn.digitaloceanspaces.com
 
     volumes:
       - uploads:/directus/uploads
       - extensions:/directus/extensions
-      - ../extensions/directus-extension-wcag-theme-colex-light:/directus/extensions/directus-extension-wcag-theme-colex-light
-      - ../extensions/directus-extension-wcag-theme-colex-dark:/directus/extensions/directus-extension-wcag-theme-colex-dark
-      - ../extensions/directus-extension-configurable-button:/directus/extensions/directus-extension-configurable-button
-      - ../extensions/directus-extension-review-module:/directus/extensions/directus-extension-review-module
-      - ../extensions/directus-hook-populate-button-context:/directus/extensions/directus-hook-populate-button-context
-      - ../extensions/directus-hook-task-dependency-v2:/directus/extensions/directus-hook-task-dependency-v2
+      - ./extensions/directus-extension-wcag-theme-colex-light:/directus/extensions/directus-extension-wcag-theme-colex-light
+      - ./extensions/directus-extension-wcag-theme-colex-dark:/directus/extensions/directus-extension-wcag-theme-colex-dark
+      # Dynamic button extensions
+      - ./extensions/directus-extension-configurable-button:/directus/extensions/directus-extension-configurable-button
+      - ./extensions/directus-extension-review-module:/directus/extensions/directus-extension-review-module
+      - ./extensions/directus-hook-populate-button-context:/directus/extensions/directus-hook-populate-button-context
+      - ./extensions/directus-hook-task-dependency-v2:/directus/extensions/directus-hook-task-dependency-v2
+      - ./extensions/directus-extension-json-interface:/directus/extensions/directus-extension-json-interface
+      - ./extensions/colex-button-display:/directus/extensions/colex-button-display
 
 volumes:
   uploads:
   extensions:
-  postgres_data:
