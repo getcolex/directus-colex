@@ -13,25 +13,46 @@
 // Adding a new collection = just add a new entry here
 const COLLECTION_CONFIG = {
 	tasks: {
-		titleField: 'title',
-		syncFields: ['status', 'title', 'output_collection', 'display_fields', 'project_id', 'action_types']
+		titleField: 'name',
+		syncFields: ['status', 'name', 'output_collection', 'display_fields', 'project_id', 'action_type', 'action_config', 'needs_approval', 'flow_id', 'webhook_url', 'webhook_method', 'link_url', 'module_path']
 	},
 	shipping_tasks: {
 		titleField: 'name',
-		syncFields: ['status', 'name', 'output_collection', 'display_fields', 'project_id', 'action_types']
+		syncFields: ['status', 'name', 'output_collection', 'display_fields', 'project_id', 'action_type', 'action_config', 'needs_approval', 'flow_id', 'webhook_url', 'webhook_method', 'link_url', 'module_path']
 	}
 };
+
+// Helper: Parse JSON field (handles string or array/object)
+function parseJsonField(value, fallback = null) {
+	if (value === null || value === undefined) return fallback;
+	if (typeof value === 'string') {
+		try {
+			return JSON.parse(value);
+		} catch (e) {
+			return fallback;
+		}
+	}
+	return value;
+}
 
 // Helper: Build button_context object for an item
 function buildButtonContext(item, config) {
 	return {
 		task_id: item.id,
 		project_id: item.project_id || null,
-		action_types: item.action_types || [],
+		action_type: item.action_type || null,
+		action_config: parseJsonField(item.action_config, null),
 		output_collection: item.output_collection || null,
 		status: item.status || 'new',
 		title: item[config.titleField] || 'Untitled Task',
-		display_fields: item.display_fields || null
+		display_fields: parseJsonField(item.display_fields, null),
+		needs_approval: item.needs_approval || false,
+		// Action-specific fields for dynamic button configuration
+		flow_id: item.flow_id || null,
+		webhook_url: item.webhook_url || null,
+		webhook_method: item.webhook_method || 'POST',
+		link_url: item.link_url || null,
+		module_path: item.module_path || null
 	};
 }
 
@@ -41,17 +62,23 @@ export default ({ filter, action }) => {
 		const config = COLLECTION_CONFIG[collection];
 		if (!config) return input;
 
-		console.log(`[populate-button-context] Creating ${collection} item, populating button_context`);
-
 		// Auto-populate button_context with item data
 		input.button_context = {
 			task_id: input.id || null,
 			project_id: input.project_id || null,
-			action_types: input.action_types || [],
+			action_type: input.action_type || null,
+			action_config: parseJsonField(input.action_config, null),
 			output_collection: input.output_collection || null,
 			status: input.status || 'new',
 			title: input[config.titleField] || 'Untitled Task',
-			display_fields: input.display_fields || null
+			display_fields: parseJsonField(input.display_fields, null),
+			needs_approval: input.needs_approval || false,
+			// Action-specific fields for dynamic button configuration
+			flow_id: input.flow_id || null,
+			webhook_url: input.webhook_url || null,
+			webhook_method: input.webhook_method || 'POST',
+			link_url: input.link_url || null,
+			module_path: input.module_path || null
 		};
 
 		return input;
@@ -62,8 +89,6 @@ export default ({ filter, action }) => {
 		const config = COLLECTION_CONFIG[collection];
 		if (!config) return;
 
-		console.log(`[populate-button-context] Post-create: Ensuring button_context has correct ID for ${collection}`);
-
 		try {
 			const item = await database(collection).where({ id: key }).first();
 			if (!item) return;
@@ -73,10 +98,8 @@ export default ({ filter, action }) => {
 			await database(collection)
 				.where({ id: key })
 				.update({ button_context: JSON.stringify(button_context) });
-
-			console.log(`[populate-button-context] Created button_context for ${collection} ${key}`);
 		} catch (error) {
-			console.error(`[populate-button-context] Error in post-create hook for ${collection}:`, error);
+			// Silently fail - don't block item creation
 		}
 	});
 
@@ -89,19 +112,10 @@ export default ({ filter, action }) => {
 		const hasRelevantUpdate = config.syncFields.some(field => payload[field] !== undefined);
 		if (!hasRelevantUpdate) return;
 
-		console.log(`[populate-button-context] Post-update: Syncing button_context for ${collection} keys:`, keys);
-
 		try {
 			for (const key of keys) {
 				const item = await database(collection).where({ id: key }).first();
 				if (!item) continue;
-
-				console.log(`[populate-button-context] Item fetched:`, JSON.stringify({
-					id: item.id,
-					project_id: item.project_id,
-					action_types: item.action_types,
-					status: item.status
-				}));
 
 				// Parse existing button_context or create new
 				let button_context = {};
@@ -117,17 +131,14 @@ export default ({ filter, action }) => {
 
 				// Merge with current item values using config
 				const updated = buildButtonContext(item, config);
-				console.log(`[populate-button-context] Built context:`, JSON.stringify(updated));
 				button_context = { ...button_context, ...updated };
 
 				await database(collection)
 					.where({ id: key })
 					.update({ button_context: JSON.stringify(button_context) });
-
-				console.log(`[populate-button-context] Synced button_context for ${collection} ${key}`);
 			}
 		} catch (error) {
-			console.error(`[populate-button-context] Error in post-update hook for ${collection}:`, error);
+			// Silently fail - don't block item update
 		}
 	});
 };

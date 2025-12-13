@@ -322,32 +322,45 @@ export default defineComponent({
 			// Get the field name (props.field can be either a string or an object)
 			const fieldName = typeof props.field === 'string' ? props.field : props.field?.field || 'status';
 
-			// NEW: If attached to button_context field, props.value IS the context object
-			if (fieldName === 'button_context' && props.value && typeof props.value === 'object') {
-				// button_context contains all task fields synced by the hook
-				// Map it to match expected item structure for interpolation
-				return {
-					id: props.value.task_id,
-					task_id: props.value.task_id,
-					project_id: props.value.project_id,
-					output_collection: props.value.output_collection,
-					status: props.value.status,
-					title: props.value.title,
-					action_type: props.value.action_type,
-					// Action-specific fields for dynamic button configuration
-					flow_id: props.value.flow_id,
-					webhook_url: props.value.webhook_url,
-					webhook_method: props.value.webhook_method,
-					link_url: props.value.link_url,
-					module_path: props.value.module_path,
-					...props.item, // Include any additional props.item data
-				};
+			// This display MUST be attached to button_context field
+			if (fieldName !== 'button_context') {
+				console.error(
+					'[Configurable Button] This display must be attached to a "button_context" field. ' +
+					`Current field: "${fieldName}". Please update your field configuration.`
+				);
+				// Return minimal fallback to prevent crashes
+				return { ...props.item };
 			}
 
-			// LEGACY: For non-button_context fields, use old behavior
+			if (!props.value || typeof props.value !== 'object') {
+				console.error(
+					'[Configurable Button] button_context field value is invalid. ' +
+					'Make sure the populate-button-context hook is running.'
+				);
+				return { ...props.item };
+			}
+
+			// button_context contains all task fields synced by the hook
+			// Map it to match expected item structure for interpolation
 			return {
-				...props.item,
-				[fieldName]: props.value,
+				...props.item, // Include any additional props.item data (spread first so button_context overrides)
+				// button_context values take precedence over props.item
+				id: props.value.task_id,
+				task_id: props.value.task_id,
+				project_id: props.value.project_id,
+				output_collection: props.value.output_collection,
+				status: props.value.status,
+				title: props.value.title,
+				action_type: props.value.action_type,
+				action_config: props.value.action_config,
+				display_fields: props.value.display_fields,
+				needs_approval: props.value.needs_approval,
+				// Action-specific fields for dynamic button configuration
+				flow_id: props.value.flow_id,
+				webhook_url: props.value.webhook_url,
+				webhook_method: props.value.webhook_method,
+				link_url: props.value.link_url,
+				module_path: props.value.module_path,
 			};
 		};
 
@@ -454,8 +467,17 @@ export default defineComponent({
 			if (template === null || template === undefined) return template;
 			if (typeof template !== 'string') return template;
 			return template.replace(/\{(\w+)\}/g, (match, key) => {
-				if (item[key] === undefined) return match;
-				return escapeHtml(String(item[key]));
+				const value = item[key];
+				// Warn if variable is missing or null
+				if (value === undefined || value === null) {
+					console.warn(
+						`[Configurable Button] Template variable "{${key}}" is ${value === undefined ? 'undefined' : 'null'}. ` +
+						`Template: "${template}". Available fields: [${Object.keys(item).join(', ')}]`
+					);
+					// Return empty string instead of broken template literal
+					return '';
+				}
+				return escapeHtml(String(value));
 			});
 		};
 
@@ -586,11 +608,21 @@ export default defineComponent({
 		const executeAction = async (button) => {
 			// Get item context (uses button_context from props.value if available)
 			const item = createEnhancedItem();
-			// Allow task to override action_type
-			const actionType = item.action_type || button.action_type;
+			// Button's action_type takes precedence (defines button behavior)
+			// Falls back to task's action_type for generic buttons (Run Task has action_type="")
+			const actionType = button.action_type || item.action_type;
+
+			// Allow task to override action_config (complete override if provided)
+			// If task provides action_config, it takes full precedence
+			const actionConfig = item.action_config || button.action_config || {};
+
 			// Merge button config with item fields for dynamic configuration
-			const baseConfig = interpolateObject(button.action_config, item);
+			const baseConfig = interpolateObject(actionConfig, item);
 			const config = { ...baseConfig, ...item };
+			// Map output_collection to collection for handler compatibility
+			if (config.output_collection && !config.collection) {
+				config.collection = config.output_collection;
+			}
 
 			loadingButtons.value[button.id] = true;
 
@@ -778,6 +810,7 @@ export default defineComponent({
 		const createDrawerFormData = ref({});
 		const createDrawerFields = ref([]);
 		const createDrawerLoading = ref(false);
+		const createDrawerItemId = ref(null); // Track item ID for edit mode
 
 		const handleCreateItemAction = async (config) => {
 			const { collection, prefill = {} } = config;
@@ -816,40 +849,52 @@ export default defineComponent({
 			}
 
 			// Open the drawer
+		createDrawerItemId.value = null; // Create mode
 			showCreateDrawer.value = true;
 		};
 
-		const saveCreateDrawerItem = async () => {
-			createDrawerLoading.value = true;
-			try {
-				const response = await api.post(`/items/${createDrawerCollection.value}`, createDrawerFormData.value);
-				const newItem = response.data.data;
+	const saveCreateDrawerItem = async () => {
+		createDrawerLoading.value = true;
+		try {
+			let response;
+			let successMessage;
 
-				notificationsStore.add({
-					title: 'Success',
-					text: 'Item created successfully',
-					type: 'success',
-				});
-
-				showCreateDrawer.value = false;
-				createDrawerFormData.value = {};
-
-				// Optionally navigate to the new item
-				router.push(`/content/${createDrawerCollection.value}/${newItem.id}`);
-			} catch (error) {
-				notificationsStore.add({
-					title: 'Error',
-					text: error.response?.data?.errors?.[0]?.message || error.message || 'Failed to create item',
-					type: 'error',
-				});
-			} finally {
-				createDrawerLoading.value = false;
+			if (createDrawerItemId.value) {
+				// Edit mode - PATCH existing item
+				response = await api.patch(`/items/${createDrawerCollection.value}/${createDrawerItemId.value}`, createDrawerFormData.value);
+				successMessage = 'Item updated successfully';
+			} else {
+				// Create mode - POST new item
+				response = await api.post(`/items/${createDrawerCollection.value}`, createDrawerFormData.value);
+				successMessage = 'Item created successfully';
 			}
-		};
+
+
+			notificationsStore.add({
+				title: 'Success',
+				text: successMessage,
+				type: 'success',
+			});
+
+			showCreateDrawer.value = false;
+			createDrawerFormData.value = {};
+			createDrawerItemId.value = null;
+
+		} catch (error) {
+			notificationsStore.add({
+				title: 'Error',
+				text: error.response?.data?.errors?.[0]?.message || error.message || 'Failed to save item',
+				type: 'error',
+			});
+		} finally {
+			createDrawerLoading.value = false;
+		}
+	};
 
 		const cancelCreateDrawer = () => {
 			showCreateDrawer.value = false;
 			createDrawerFormData.value = {};
+			createDrawerItemId.value = null;
 		};
 
 		const handleCreateItemSingleAction = async (config) => {
@@ -877,34 +922,41 @@ export default defineComponent({
 				}
 			}
 
-			// Check if an item already exists
-			if (Object.keys(filterToUse).length > 0) {
-				try {
-					const existingResponse = await api.get(`/items/${collection}`, {
-						params: {
-							filter: filterToUse,
-							limit: 1,
-							fields: ['id'],
-						},
-					});
+		// Check if an item already exists
+		if (Object.keys(filterToUse).length > 0) {
+			try {
+				const existingResponse = await api.get(`/items/${collection}`, {
+					params: {
+						filter: filterToUse,
+						limit: 1,
+					},
+				});
 
-					const existingItems = existingResponse.data.data || [];
-					if (existingItems.length > 0) {
-						// Item already exists - navigate to it
-						const existingId = existingItems[0].id;
-						notificationsStore.add({
-							title: 'Info',
-							text: existing_message,
-							type: 'info',
-						});
-						router.push(`/content/${collection}/${existingId}`);
-						return;
+				const existingItems = existingResponse.data.data || [];
+				if (existingItems.length > 0) {
+					// Item already exists - open drawer with existing data
+					const existingItem = existingItems[0];
+
+
+					// Open drawer with existing item data for editing
+					createDrawerCollection.value = collection;
+					createDrawerFormData.value = existingItem;
+					createDrawerItemId.value = existingItem.id; // Track ID for PATCH
+
+					try {
+						createDrawerFields.value = fieldsStore.getFieldsForCollection(collection);
+					} catch (error) {
+						createDrawerFields.value = [];
 					}
-				} catch (error) {
-					// If lookup fails, proceed to create (fail-open for better UX)
-					console.warn('Lookup for existing item failed:', error);
+
+					showCreateDrawer.value = true;
+					return;
 				}
+			} catch (error) {
+				// If lookup fails, proceed to create (fail-open for better UX)
+				console.warn('Lookup for existing item failed:', error);
 			}
+		}
 
 			// No existing item found - proceed with creation using the drawer
 			// Build initial form data from prefill, filtering out empty values
@@ -932,6 +984,7 @@ export default defineComponent({
 			}
 
 			// Open the drawer
+		createDrawerItemId.value = null; // Create mode
 			showCreateDrawer.value = true;
 		};
 
