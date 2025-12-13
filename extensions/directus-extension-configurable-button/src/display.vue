@@ -619,15 +619,18 @@ export default defineComponent({
 			// Merge button config with item fields for dynamic configuration
 			const baseConfig = interpolateObject(actionConfig, item);
 			const config = { ...baseConfig, ...item };
+
 			// Map output_collection to collection for handler compatibility
 			if (config.output_collection && !config.collection) {
 				config.collection = config.output_collection;
 			}
-			// Map webhook_url to url for webhook handler
+
+			// Map webhook_url to url for handler compatibility
 			if (config.webhook_url && !config.url) {
 				config.url = config.webhook_url;
 			}
-			// Map webhook_method to method for webhook handler
+
+			// Map webhook_method to method for handler compatibility
 			if (config.webhook_method && !config.method) {
 				config.method = config.webhook_method;
 			}
@@ -720,11 +723,16 @@ export default defineComponent({
 			validateWebhookUrl(url);
 
 			try {
-				const response = await api.request({
-					method: method.toLowerCase(),
+				// Use server-side webhook proxy to bypass CORS
+				const response = await api.post('/webhook-proxy', {
 					url: url,
-					data: payload,
+					method: method.toUpperCase(),
+					body: payload,
 				});
+
+				if (!response.success && response.status >= 400) {
+					throw new Error(`Webhook failed with status ${response.status}: ${response.statusText}`);
+				}
 
 				notificationsStore.add({
 					title: 'Success',

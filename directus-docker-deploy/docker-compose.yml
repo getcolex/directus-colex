@@ -66,6 +66,7 @@ services:
       - ../extensions/directus-extension-review-module:/directus/extensions/directus-extension-review-module
       - ../extensions/directus-hook-populate-button-context:/directus/extensions/directus-hook-populate-button-context
       - ../extensions/directus-hook-task-dependency-v2:/directus/extensions/directus-hook-task-dependency-v2
+      - ../extensions/directus-endpoint-webhook-proxy:/directus/extensions/directus-endpoint-webhook-proxy
 
 volumes:
   uploads:
