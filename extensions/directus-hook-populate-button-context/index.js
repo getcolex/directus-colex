@@ -14,11 +14,11 @@
 const COLLECTION_CONFIG = {
 	tasks: {
 		titleField: 'name',
-		syncFields: ['status', 'name', 'output_collection', 'display_fields', 'project_id', 'action_type', 'action_config', 'flow_id', 'webhook_url', 'webhook_method', 'link_url', 'module_path']
+		syncFields: ['status', 'name', 'output_collection', 'display_fields', 'project_id', 'action_type', 'action_config', 'needs_approval', 'flow_id', 'webhook_url', 'webhook_method', 'link_url', 'module_path']
 	},
 	shipping_tasks: {
 		titleField: 'name',
-		syncFields: ['status', 'name', 'output_collection', 'display_fields', 'project_id', 'action_type', 'action_config', 'flow_id', 'webhook_url', 'webhook_method', 'link_url', 'module_path']
+		syncFields: ['status', 'name', 'output_collection', 'display_fields', 'project_id', 'action_type', 'action_config', 'needs_approval', 'flow_id', 'webhook_url', 'webhook_method', 'link_url', 'module_path']
 	}
 };
 
@@ -46,6 +46,7 @@ function buildButtonContext(item, config) {
 		status: item.status || 'new',
 		title: item[config.titleField] || 'Untitled Task',
 		display_fields: parseJsonField(item.display_fields, null),
+		needs_approval: item.needs_approval || false,
 		// Action-specific fields for dynamic button configuration
 		flow_id: item.flow_id || null,
 		webhook_url: item.webhook_url || null,
@@ -71,6 +72,7 @@ export default ({ filter, action }) => {
 			status: input.status || 'new',
 			title: input[config.titleField] || 'Untitled Task',
 			display_fields: parseJsonField(input.display_fields, null),
+			needs_approval: input.needs_approval || false,
 			// Action-specific fields for dynamic button configuration
 			flow_id: input.flow_id || null,
 			webhook_url: input.webhook_url || null,

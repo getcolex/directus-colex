@@ -353,6 +353,8 @@ export default defineComponent({
 				title: props.value.title,
 				action_type: props.value.action_type,
 				action_config: props.value.action_config,
+				display_fields: props.value.display_fields,
+				needs_approval: props.value.needs_approval,
 				// Action-specific fields for dynamic button configuration
 				flow_id: props.value.flow_id,
 				webhook_url: props.value.webhook_url,
@@ -606,8 +608,9 @@ export default defineComponent({
 		const executeAction = async (button) => {
 			// Get item context (uses button_context from props.value if available)
 			const item = createEnhancedItem();
-			// Allow task to override action_type
-			const actionType = item.action_type || button.action_type;
+			// Button's action_type takes precedence (defines button behavior)
+			// Falls back to task's action_type for generic buttons (Run Task has action_type="")
+			const actionType = button.action_type || item.action_type;
 
 			// Allow task to override action_config (complete override if provided)
 			// If task provides action_config, it takes full precedence
