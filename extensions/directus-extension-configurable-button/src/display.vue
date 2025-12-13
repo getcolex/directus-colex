@@ -610,7 +610,7 @@ export default defineComponent({
 			const item = createEnhancedItem();
 			// Button's action_type takes precedence (defines button behavior)
 			// Falls back to task's action_type for generic buttons (Run Task has action_type="")
-			const actionType = button.action_type || item.action_type;
+			let actionType = button.action_type || item.action_type;
 
 			// Allow task to override action_config (complete override if provided)
 			// If task provides action_config, it takes full precedence
@@ -909,13 +909,22 @@ export default defineComponent({
 				throw new Error('Invalid collection name');
 			}
 
+			// Auto-prefill project_id and task_id from config if not in prefill
+			const enhancedPrefill = { ...prefill };
+			if (config.project_id && !enhancedPrefill.project_id) {
+				enhancedPrefill.project_id = config.project_id;
+			}
+			if (config.task_id && !enhancedPrefill.task_id) {
+				enhancedPrefill.task_id = config.task_id;
+			}
+
 			// Build lookup filter from prefill if not explicitly provided
 			// This allows checking if an item with the same key fields already exists
 			let filterToUse = lookup_filter;
-			if (Object.keys(lookup_filter).length === 0 && Object.keys(prefill).length > 0) {
+			if (Object.keys(lookup_filter).length === 0 && Object.keys(enhancedPrefill).length > 0) {
 				// Use prefill values as the lookup filter
 				filterToUse = {};
-				for (const [key, value] of Object.entries(prefill)) {
+				for (const [key, value] of Object.entries(enhancedPrefill)) {
 					if (value !== null && value !== undefined && value !== '') {
 						filterToUse[key] = { _eq: value };
 					}
@@ -946,7 +955,8 @@ export default defineComponent({
 					try {
 						createDrawerFields.value = fieldsStore.getFieldsForCollection(collection);
 					} catch (error) {
-						createDrawerFields.value = [];
+						console.error(`Failed to fetch fields for collection ${collection}:`, error);
+						throw new Error(`Collection '${collection}' not found or fields cannot be loaded`);
 					}
 
 					showCreateDrawer.value = true;
@@ -961,7 +971,7 @@ export default defineComponent({
 			// No existing item found - proceed with creation using the drawer
 			// Build initial form data from prefill, filtering out empty values
 			const initialData = {};
-			for (const [key, value] of Object.entries(prefill)) {
+			for (const [key, value] of Object.entries(enhancedPrefill)) {
 				if (value !== null && value !== undefined && value !== '') {
 					// Convert numeric strings to numbers for ID fields
 					if ((key.endsWith('_id') || key === 'id') && !isNaN(value)) {
@@ -979,8 +989,12 @@ export default defineComponent({
 			// Fetch fields for the collection
 			try {
 				createDrawerFields.value = fieldsStore.getFieldsForCollection(collection);
+				if (!createDrawerFields.value || createDrawerFields.value.length === 0) {
+					throw new Error(`No fields found for collection '${collection}'`);
+				}
 			} catch (error) {
-				createDrawerFields.value = [];
+				console.error(`Failed to fetch fields for collection ${collection}:`, error);
+				throw new Error(`Collection '${collection}' not found or has no accessible fields`);
 			}
 
 			// Open the drawer
