@@ -725,11 +725,34 @@ export default defineComponent({
 			validateWebhookUrl(url);
 
 			try {
-				const response = await api.request({
-					method: method.toLowerCase(),
-					url: url,
-					data: payload,
-				});
+				// Check if URL is external (not a Directus API path)
+				const isExternalUrl = url.startsWith('http://') || url.startsWith('https://');
+				
+				let response;
+				if (isExternalUrl) {
+					// Use fetch for external webhooks
+					const fetchResponse = await fetch(url, {
+						method: method.toUpperCase(),
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
+					});
+
+					if (!fetchResponse.ok) {
+						throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
+					}
+
+					const data = await fetchResponse.json().catch(() => null);
+					response = { data };
+				} else {
+					// Use Directus API client for internal paths
+					response = await api.request({
+						method: method.toLowerCase(),
+						url: url,
+						data: payload,
+					});
+				}
 
 				notificationsStore.add({
 					title: 'Success',
