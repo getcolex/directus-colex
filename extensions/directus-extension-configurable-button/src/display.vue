@@ -623,6 +623,14 @@ export default defineComponent({
 			if (config.output_collection && !config.collection) {
 				config.collection = config.output_collection;
 			}
+			// Map webhook_url to url for webhook handler
+			if (config.webhook_url && !config.url) {
+				config.url = config.webhook_url;
+			}
+			// Map webhook_method to method for webhook handler
+			if (config.webhook_method && !config.method) {
+				config.method = config.webhook_method;
+			}
 
 			loadingButtons.value[button.id] = true;
 
