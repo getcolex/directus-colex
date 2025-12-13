@@ -72,7 +72,7 @@ export default defineHook(({ filter, action }, { services, getSchema, logger }) 
 				});
 			}
 
-		} catch (error: any) {
+		} catch (error) {
 			logger.error(`Error triggering webhook for task ${key}: ${error.message}`);
 			
 			try {
@@ -82,7 +82,7 @@ export default defineHook(({ filter, action }, { services, getSchema, logger }) 
 					webhook_last_error: error.message,
 					last_webhook_trigger: new Date().toISOString()
 				});
-			} catch (updateError: any) {
+			} catch (updateError) {
 				logger.error(`Failed to update task after webhook error: ${updateError.message}`);
 			}
 		}
