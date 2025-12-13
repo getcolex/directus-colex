@@ -1,6 +1,6 @@
 {
   "name": "directus-extension-configurable-button",
-  "version": "1.4.0",
+  "version": "1.4.6",
   "description": "State-driven action buttons with dynamic visibility and contextual filtering for Directus",
   "icon": "touch_app",
   "type": "module",
