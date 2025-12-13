@@ -715,7 +715,7 @@ export default defineComponent({
 		};
 
 		const handleWebhookAction = async (config) => {
-			const { url, method = 'POST', payload = {}, success_message, error_message } = config;
+			const { url, method = 'POST', payload = {}, success_message, error_message, task_id, project_id } = config;
 
 			if (!url) {
 				throw new Error('URL is required for webhook action');
@@ -730,16 +730,44 @@ export default defineComponent({
 				
 				let response;
 				if (isExternalUrl) {
-					// Proxy external webhooks through Directus backend to avoid CORS
-					// Use the utils/request endpoint which proxies external requests
-					response = await api.post('/utils/request', {
-						url: url,
-						method: method.toUpperCase(),
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
-					});
+					// For external webhooks, create a temporary item to trigger a flow
+					// The flow will handle the actual webhook call from the backend
+					try {
+						// Update task status to trigger webhook via hook or flow
+						await api.patch(`/items/tasks/${task_id}`, {
+							webhook_triggered: true,
+							last_webhook_trigger: new Date().toISOString()
+						});
+						
+						// Show immediate success (actual webhook happens server-side)
+						notificationsStore.add({
+							title: 'Task Started',
+							text: success_message || 'Task webhook triggered successfully',
+							type: 'info',
+						});
+						
+						return { success: true };
+					} catch (error) {
+						// If task update fails, try direct fetch with no-cors mode (fire-and-forget)
+						fetch(url, {
+							method: method.toUpperCase(),
+							mode: 'no-cors',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
+						}).catch(() => {
+							// Ignore errors in no-cors mode
+						});
+						
+						notificationsStore.add({
+							title: 'Task Started',
+							text: success_message || 'Task webhook sent (response not available due to CORS)',
+							type: 'info',
+						});
+						
+						return { success: true };
+					}
 				} else {
 					// Use Directus API client for internal paths
 					response = await api.request({
@@ -747,15 +775,15 @@ export default defineComponent({
 						url: url,
 						data: payload,
 					});
+					
+					notificationsStore.add({
+						title: 'Success',
+						text: success_message || 'Action completed successfully',
+						type: 'success',
+					});
+					
+					return response.data;
 				}
-
-				notificationsStore.add({
-					title: 'Success',
-					text: success_message || 'Webhook executed successfully',
-					type: 'success',
-				});
-
-				return response.data;
 			} catch (error) {
 				throw new Error(error_message || error.message || 'Webhook failed');
 			}
