@@ -37,7 +37,7 @@ services:
       EXTENSIONS_PATH: /directus/extensions
       LOG_LEVEL: debug
       # Files storage
-      STORAGE_LOCATIONS: s3
+      STORAGE_LOCATIONS: local,s3
 
       # S3 driver pointed to Spaces
       STORAGE_S3_DRIVER: ${STORAGE_S3_DRIVER}
