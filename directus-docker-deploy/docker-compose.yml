@@ -57,14 +57,8 @@ services:
       - extensions:/directus/extensions
       - ./extensions/directus-extension-wcag-theme-colex-light:/directus/extensions/directus-extension-wcag-theme-colex-light
       - ./extensions/directus-extension-wcag-theme-colex-dark:/directus/extensions/directus-extension-wcag-theme-colex-dark
-      # Dynamic button extensions
-      - ./extensions/directus-extension-configurable-button:/directus/extensions/directus-extension-configurable-button
-      - ./extensions/directus-extension-review-module:/directus/extensions/directus-extension-review-module
-      - ./extensions/directus-hook-populate-button-context:/directus/extensions/directus-hook-populate-button-context
-      - ./extensions/directus-hook-task-dependency-v2:/directus/extensions/directus-hook-task-dependency-v2
-      - ./extensions/directus-endpoint-webhook-proxy:/directus/extensions/directus-endpoint-webhook-proxy
       - ./extensions/directus-extension-json-interface:/directus/extensions/directus-extension-json-interface
-      - ./extensions/colex-button-display:/directus/extensions/colex-button-display
+      # Colex button system bundle (replaces individual button extensions)
       - ./extensions/colex-button-system-bundle:/directus/extensions/colex-button-system-bundle
 volumes:
   uploads:
