@@ -65,6 +65,7 @@ services:
       - ./extensions/directus-endpoint-webhook-proxy:/directus/extensions/directus-endpoint-webhook-proxy
       - ./extensions/directus-extension-json-interface:/directus/extensions/directus-extension-json-interface
       - ./extensions/colex-button-display:/directus/extensions/colex-button-display
+      - ./extensions/colex-button-system-bundle:/directus/extensions/colex-button-system-bundle
 volumes:
   uploads:
   extensions:
