@@ -38,10 +38,25 @@ export default {
 					// Block private IP ranges (SSRF protection)
 					const hostname = urlObj.hostname.toLowerCase();
 
-					// Block localhost
-					if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+					// Block localhost (IPv4 and IPv6)
+					if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]') {
 						return res.status(403).json({
 							error: 'Localhost URLs are not allowed for security reasons.',
+						});
+					}
+
+					// Block IPv6 link-local addresses (fe80::/10)
+					if (hostname.startsWith('[fe80:') || hostname.startsWith('fe80:')) {
+						return res.status(403).json({
+							error: 'IPv6 link-local addresses are not allowed.',
+						});
+					}
+
+					// Block IPv6 unique local addresses (fc00::/7 - includes fc00:: and fd00::)
+					if (hostname.startsWith('[fc') || hostname.startsWith('fc') ||
+					    hostname.startsWith('[fd') || hostname.startsWith('fd')) {
+						return res.status(403).json({
+							error: 'IPv6 private addresses are not allowed.',
 						});
 					}
 
@@ -91,13 +106,17 @@ export default {
 					});
 				}
 
-				// Prepare fetch options
+				// Prepare fetch options with timeout
+				const controller = new AbortController();
+				const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
 				const fetchOptions = {
 					method: normalizedMethod,
 					headers: {
 						'Content-Type': 'application/json',
 						...headers,
 					},
+					signal: controller.signal,
 				};
 
 				// Add body for methods that support it
@@ -105,8 +124,37 @@ export default {
 					fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
 				}
 
-				// Execute webhook request
-				const response = await fetch(url, fetchOptions);
+				// Log webhook execution (for audit trail)
+				console.log('[Webhook Proxy] Executing webhook:', {
+					url,
+					method: normalizedMethod,
+					user: req.accountability?.user || 'unknown'
+				});
+				const startTime = Date.now();
+
+				// Execute webhook request with timeout handling
+				let response;
+				try {
+					response = await fetch(url, fetchOptions);
+					clearTimeout(timeout);
+
+					const duration = Date.now() - startTime;
+					console.log('[Webhook Proxy] Webhook response:', {
+						url,
+						status: response.status,
+						duration: `${duration}ms`,
+						ok: response.ok
+					});
+				} catch (fetchError) {
+					clearTimeout(timeout);
+
+					if (fetchError.name === 'AbortError') {
+						console.error('[Webhook Proxy] Webhook timeout:', { url, duration: '30000ms' });
+						throw new Error('Webhook request timed out after 30 seconds');
+					}
+					console.error('[Webhook Proxy] Webhook fetch error:', { url, error: fetchError.message });
+					throw fetchError;
+				}
 
 				// Get response body
 				let responseBody;
