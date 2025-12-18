@@ -1,0 +1,24 @@
+{
+  "name": "directus-hook-task-dependency-v2",
+  "version": "1.0.0",
+  "description": "Automatically updates dependent tasks to 'ready' when all dependencies are completed",
+  "type": "module",
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-custom-hook"
+  ],
+  "directus:extension": {
+    "type": "hook",
+    "path": "dist/index.js",
+    "source": "index.js",
+    "host": "^11.0.0"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build --watch"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^12.0.2"
+  }
+}

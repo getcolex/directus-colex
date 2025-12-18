@@ -53,7 +53,9 @@
 		"dev": "directus-extension build -w --no-minify",
 		"link": "directus-extension link",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"pack": "npm pack",
+		"export": "npm pack && tar -xzf colex-button-system-bundle-1.0.0.tgz && zip -r colex-button-system-bundle-1.0.0.zip package && rm -rf package colex-button-system-bundle-1.0.0.tgz"
 	},
 	"devDependencies": {
 		"@directus/extensions-sdk": "^12.0.2",
