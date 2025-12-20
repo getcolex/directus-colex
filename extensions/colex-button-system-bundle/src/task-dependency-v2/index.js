@@ -28,10 +28,10 @@ function parseJsonField(value) {
 // Collections that support task dependencies
 const SUPPORTED_COLLECTIONS = ['tasks', 'shipping_tasks'];
 
-export default ({ action }, { services, getSchema }) => {
+export default ({ action }, { services, getSchema, logger }) => {
 	const { ItemsService } = services;
 
-	action('items.update', async (meta, context) => {
+	action('items.update', async (meta) => {
 		const { payload, keys, collection } = meta;
 
 		// Only process supported collections
@@ -47,15 +47,14 @@ export default ({ action }, { services, getSchema }) => {
 				accountability: { admin: true }, // Bypass permissions for system operation
 			});
 
+			// Optimization: Fetch all updated tasks in one query instead of N+1
+			const completedTasks = await itemsService.readByQuery({
+				filter: { id: { _in: keys } },
+				fields: ['*'],
+			});
+
 			// Process each updated task
-			for (const taskId of keys) {
-				// Get the completed task details
-				const completedTask = await itemsService.readOne(taskId, {
-					fields: ['*'],
-				});
-
-				if (!completedTask) continue;
-
+			await Promise.all(completedTasks.map(async (completedTask) => {
 				const completedTaskName = completedTask.name;
 
 				// Find all tasks in the same project that might depend on this task
@@ -70,7 +69,7 @@ export default ({ action }, { services, getSchema }) => {
 					fields: ['id', 'name', 'depends_on', 'status'],
 				});
 
-				if (potentialDependents.length === 0) continue;
+				if (potentialDependents.length === 0) return;
 
 				// Filter tasks that actually depend on the completed task
 				const dependentTasks = potentialDependents.filter((task) => {
@@ -79,18 +78,29 @@ export default ({ action }, { services, getSchema }) => {
 					return dependencies.includes(completedTaskName);
 				});
 
-				if (dependentTasks.length === 0) continue;
+				if (dependentTasks.length === 0) return;
 
 				// Check each dependent task to see if ALL its dependencies are done
-				for (const dependentTask of dependentTasks) {
+				await Promise.all(dependentTasks.map(async (dependentTask) => {
 					const dependencies = parseJsonField(dependentTask.depends_on);
-					if (!Array.isArray(dependencies) || dependencies.length === 0) continue;
+					if (!Array.isArray(dependencies) || dependencies.length === 0) return;
 
-					// Get status of all dependency tasks
+					// Optimization: Filter out the task we just finished (we know it's done)
+					const remainingDependencies = dependencies.filter(name => name !== completedTaskName);
+
+					// If that was the only dependency, we are ready!
+					if (remainingDependencies.length === 0) {
+						await itemsService.updateOne(dependentTask.id, {
+							status: 'ready',
+						});
+						return;
+					}
+
+					// Get status of REMAINING dependency tasks
 					const dependencyTasks = await itemsService.readByQuery({
 						filter: {
 							_and: [
-								{ name: { _in: dependencies } },
+								{ name: { _in: remainingDependencies } },
 								{ project_id: { _eq: completedTask.project_id } },
 							],
 						},
@@ -98,7 +108,7 @@ export default ({ action }, { services, getSchema }) => {
 					});
 
 					// Verify all dependencies exist and are 'done'
-					const allDependenciesExist = dependencyTasks.length === dependencies.length;
+					const allDependenciesExist = dependencyTasks.length === remainingDependencies.length;
 					const allDependenciesDone = dependencyTasks.every((task) => task.status === 'done');
 
 					if (allDependenciesExist && allDependenciesDone) {
@@ -107,11 +117,10 @@ export default ({ action }, { services, getSchema }) => {
 							status: 'ready',
 						});
 					}
-				}
-			}
+				}));
+			}));
 		} catch (error) {
-			// Silently fail - don't block task updates
-			// In production, you might want to log this to a monitoring service
+			logger.warn(`[Task Dependency] Error processing update: ${error.message}`);
 		}
 	});
 };

@@ -15,6 +15,7 @@ catalog:
   '@changesets/cli': 2.29.5
   '@changesets/get-github-info': 0.6.0
   '@changesets/types': 6.1.0
+  '@directus/extensions-sdk': ^12.1.4
   '@directus/schema-builder': workspace:*
   '@directus/tsconfig': 3.0.0
   '@directus/types': workspace:*

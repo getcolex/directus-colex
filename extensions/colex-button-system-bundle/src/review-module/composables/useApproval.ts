@@ -1,6 +1,7 @@
 import { useApi, useStores } from '@directus/extensions-sdk';
+import type { Ref } from 'vue';
 
-export function useApproval(collection) {
+export function useApproval(collection: Ref<string | null>) {
 	const api = useApi();
 	const { useNotificationsStore } = useStores();
 	const notificationsStore = useNotificationsStore();
@@ -13,7 +14,7 @@ export function useApproval(collection) {
 	};
 
 	// Generic batch status update using Directus batch PATCH
-	const updateItemsStatus = async (ids, status, successMessage) => {
+	const updateItemsStatus = async (ids: (string | number)[], status: string, successMessage: string) => {
 		validateCollection();
 
 		if (ids.length === 0) return;
@@ -44,22 +45,22 @@ export function useApproval(collection) {
 	};
 
 	// Approve multiple items (batch)
-	const approve = async (ids) => {
+	const approve = async (ids: (string | number)[]) => {
 		await updateItemsStatus(ids, 'approved', `Approved ${ids.length} output(s)`);
 	};
 
 	// Reject multiple items (batch)
-	const reject = async (ids) => {
+	const reject = async (ids: (string | number)[]) => {
 		await updateItemsStatus(ids, 'rejected', `Rejected ${ids.length} output(s)`);
 	};
 
 	// Approve all remaining (batch) - same as approve but with different message
-	const approveAllRemaining = async (ids) => {
+	const approveAllRemaining = async (ids: (string | number)[]) => {
 		await updateItemsStatus(ids, 'approved', `Approved ${ids.length} remaining output(s)`);
 	};
 
 	// Delete multiple items (sequential - Directus REST doesn't support batch DELETE)
-	const deleteOutputs = async (ids) => {
+	const deleteOutputs = async (ids: (string | number)[]) => {
 		validateCollection();
 
 		try {
@@ -82,7 +83,7 @@ export function useApproval(collection) {
 	};
 
 	// Edit single item
-	const edit = async (id, changes) => {
+	const edit = async (id: string | number, changes: Record<string, any>) => {
 		validateCollection();
 
 		try {
@@ -104,7 +105,7 @@ export function useApproval(collection) {
 	};
 
 	// Create single item
-	const create = async (data) => {
+	const create = async (data: Record<string, any>) => {
 		validateCollection();
 
 		try {

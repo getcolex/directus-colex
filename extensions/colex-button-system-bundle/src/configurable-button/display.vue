@@ -235,39 +235,24 @@ export default defineComponent({
 				});
 
 			// Parse JSON string fields (Directus returns JSON fields as strings)
-			const parsedData = (response.data.data || []).map(button => {
+			const parsedData = (response.data.data || []).map((button) => {
 				const parsed = { ...button };
-			
-				// Parse visibility_condition if it's a string
-				if (typeof parsed.visibility_condition === 'string') {
-					try {
-						parsed.visibility_condition = JSON.parse(parsed.visibility_condition);
-					} catch (e) {
-						console.warn('[Configurable Button] Failed to parse visibility_condition:', e);
-						parsed.visibility_condition = null;
+
+				const parseField = (field, fallback = null) => {
+					if (typeof parsed[field] === 'string') {
+						try {
+							parsed[field] = JSON.parse(parsed[field]);
+						} catch (e) {
+							console.warn(`[Configurable Button] Failed to parse ${field}:`, e);
+							parsed[field] = fallback;
+						}
 					}
-				}
-			
-				// Parse disabled_condition if it's a string
-				if (typeof parsed.disabled_condition === 'string') {
-					try {
-						parsed.disabled_condition = JSON.parse(parsed.disabled_condition);
-					} catch (e) {
-						console.warn('[Configurable Button] Failed to parse disabled_condition:', e);
-						parsed.disabled_condition = null;
-					}
-				}
-			
-				// Parse action_config if it's a string
-				if (typeof parsed.action_config === 'string') {
-					try {
-						parsed.action_config = JSON.parse(parsed.action_config);
-					} catch (e) {
-						console.warn('[Configurable Button] Failed to parse action_config:', e);
-						parsed.action_config = {};
-					}
-				}
-			
+				};
+
+				parseField('visibility_condition');
+				parseField('disabled_condition');
+				parseField('action_config', {});
+
 				return parsed;
 			});
 
