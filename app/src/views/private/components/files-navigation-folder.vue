@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { ref } from 'vue';
-import { useFolders, Folder } from '@/composables/use-folders';
 import api from '@/api';
-import FolderPicker from '@/views/private/components/folder-picker.vue';
-import NavigationFolder from '@/views/private/components/files-navigation-folder.vue';
-import { useRouter } from 'vue-router';
-import { unexpectedError } from '@/utils/unexpected-error';
+import { Folder, useFolders } from '@/composables/use-folders';
 import { FolderTarget } from '@/types/folders';
+import { getFolderUrl } from '@/utils/get-asset-url';
+import { unexpectedError } from '@/utils/unexpected-error';
+import NavigationFolder from '@/views/private/components/files-navigation-folder.vue';
+import FolderPicker from '@/views/private/components/folder-picker.vue';
+import { getDateTimeFormatted } from '@directus/utils';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 const props = withDefaults(
 	defineProps<{
@@ -20,8 +21,6 @@ const props = withDefaults(
 		clickHandler: () => () => undefined,
 	},
 );
-
-const { t } = useI18n();
 
 const router = useRouter();
 
@@ -157,6 +156,29 @@ function useDeleteFolder() {
 		}
 	}
 }
+
+async function downloadFolder() {
+	const response = await fetch(getFolderUrl(props.folder.id), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	});
+
+	if (!response.ok) {
+		unexpectedError({ response: { data: await response.json() } });
+	}
+
+	const blob = await response.blob();
+	const filename = response.headers.get('Content-Disposition')?.match(/filename="(.*?)"/)?.[1];
+
+	const url = window.URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = filename ?? `folder-unknown-${getDateTimeFormatted()}.zip`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
 </script>
 
 <template>
@@ -210,7 +232,7 @@ function useDeleteFolder() {
 						<v-icon name="edit" outline />
 					</v-list-item-icon>
 					<v-list-item-content>
-						<v-text-overflow :text="t('rename_folder')" />
+						<v-text-overflow :text="$t('rename_folder')" />
 					</v-list-item-content>
 				</v-list-item>
 				<v-list-item clickable @click="moveActive = true">
@@ -218,7 +240,15 @@ function useDeleteFolder() {
 						<v-icon name="folder_move" />
 					</v-list-item-icon>
 					<v-list-item-content>
-						<v-text-overflow :text="t('move_to_folder')" />
+						<v-text-overflow :text="$t('move_to_folder')" />
+					</v-list-item-content>
+				</v-list-item>
+				<v-list-item clickable @click="downloadFolder">
+					<v-list-item-icon>
+						<v-icon name="download" />
+					</v-list-item-icon>
+					<v-list-item-content>
+						<v-text-overflow :text="$t('download_folder')" />
 					</v-list-item-content>
 				</v-list-item>
 				<v-list-item class="danger" clickable @click="deleteActive = true">
@@ -226,7 +256,7 @@ function useDeleteFolder() {
 						<v-icon name="delete" outline />
 					</v-list-item-icon>
 					<v-list-item-content>
-						<v-text-overflow :text="t('delete_folder')" />
+						<v-text-overflow :text="$t('delete_folder')" />
 					</v-list-item-content>
 				</v-list-item>
 			</v-list>
@@ -234,14 +264,14 @@ function useDeleteFolder() {
 
 		<v-dialog v-model="renameActive" persistent @esc="renameActive = false" @apply="renameSave">
 			<v-card>
-				<v-card-title>{{ t('rename_folder') }}</v-card-title>
+				<v-card-title>{{ $t('rename_folder') }}</v-card-title>
 				<v-card-text>
 					<v-input v-model="renameValue" autofocus />
 				</v-card-text>
 				<v-card-actions>
-					<v-button secondary @click="renameActive = false">{{ t('cancel') }}</v-button>
+					<v-button secondary @click="renameActive = false">{{ $t('cancel') }}</v-button>
 					<v-button :disabled="renameValue === null" :loading="renameSaving" @click="renameSave">
-						{{ t('save') }}
+						{{ $t('save') }}
 					</v-button>
 				</v-card-actions>
 			</v-card>
@@ -249,28 +279,28 @@ function useDeleteFolder() {
 
 		<v-dialog v-model="moveActive" persistent @esc="moveActive = false" @apply="moveSave">
 			<v-card>
-				<v-card-title>{{ t('move_to_folder') }}</v-card-title>
+				<v-card-title>{{ $t('move_to_folder') }}</v-card-title>
 				<v-card-text>
 					<folder-picker v-model="moveValue" :disabled-folders="[folder.id]" />
 				</v-card-text>
 				<v-card-actions>
-					<v-button secondary @click="moveActive = false">{{ t('cancel') }}</v-button>
-					<v-button :loading="moveSaving" @click="moveSave">{{ t('save') }}</v-button>
+					<v-button secondary @click="moveActive = false">{{ $t('cancel') }}</v-button>
+					<v-button :loading="moveSaving" @click="moveSave">{{ $t('save') }}</v-button>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
 
 		<v-dialog v-model="deleteActive" persistent @esc="deleteActive = false" @apply="deleteSave">
 			<v-card>
-				<v-card-title>{{ t('delete_folder') }}</v-card-title>
+				<v-card-title>{{ $t('delete_folder') }}</v-card-title>
 				<v-card-text>
 					<v-notice>
-						{{ t('nested_files_folders_will_be_moved') }}
+						{{ $t('nested_files_folders_will_be_moved') }}
 					</v-notice>
 				</v-card-text>
 				<v-card-actions>
-					<v-button secondary @click="deleteActive = false">{{ t('cancel') }}</v-button>
-					<v-button kind="danger" :loading="deleteSaving" @click="deleteSave">{{ t('delete_label') }}</v-button>
+					<v-button secondary @click="deleteActive = false">{{ $t('cancel') }}</v-button>
+					<v-button kind="danger" :loading="deleteSaving" @click="deleteSave">{{ $t('delete_label') }}</v-button>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>

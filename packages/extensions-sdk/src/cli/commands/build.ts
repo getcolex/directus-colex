@@ -9,17 +9,17 @@ import {
 import type { AppExtensionType, ApiExtensionType } from '@directus/types';
 import { APP_EXTENSION_TYPES, EXTENSION_TYPES, HYBRID_EXTENSION_TYPES } from '@directus/constants';
 import { isIn, isTypeIn } from '@directus/utils';
-import commonjs from '@rollup/plugin-commonjs';
-import json from '@rollup/plugin-json';
+import commonjsDefault from '@rollup/plugin-commonjs';
+import jsonDefault from '@rollup/plugin-json';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
-import replace from '@rollup/plugin-replace';
-import terser from '@rollup/plugin-terser';
-import virtual from '@rollup/plugin-virtual';
+import replaceDefault from '@rollup/plugin-replace';
+import terserDefault from '@rollup/plugin-terser';
+import virtualDefault from '@rollup/plugin-virtual';
 import vue from '@vitejs/plugin-vue';
 import chalk from 'chalk';
-import * as fse from 'fs-extra';
+import fse from 'fs-extra';
 import ora from 'ora';
-import * as path from 'path';
+import path from 'path';
 import type { RollupError, RollupOptions, OutputOptions as RollupOutputOptions } from 'rollup';
 import { rollup, watch as rollupWatch } from 'rollup';
 import esbuild from 'rollup-plugin-esbuild';
@@ -32,7 +32,12 @@ import generateBundleEntrypoint from './helpers/generate-bundle-entrypoint.js';
 import loadConfig from './helpers/load-config.js';
 import { validateSplitEntrypointOption } from './helpers/validate-cli-options.js';
 
-// Direct imports from Rollup plugins
+// Workaround for https://github.com/rollup/plugins/issues/1329
+const virtual = virtualDefault as unknown as typeof virtualDefault.default;
+const commonjs = commonjsDefault as unknown as typeof commonjsDefault.default;
+const json = jsonDefault as unknown as typeof jsonDefault.default;
+const replace = replaceDefault as unknown as typeof replaceDefault.default;
+const terser = terserDefault as unknown as typeof terserDefault.default;
 
 type BuildOptions = {
 	type?: string;
@@ -534,7 +539,11 @@ function getRollupOptions({
 			esbuild({ include: /\.tsx?$/, sourceMap: sourcemap }),
 			mode === 'browser' ? styles() : null,
 			...plugins,
-			nodeResolve({ browser: mode === 'browser', preferBuiltins: mode === 'node' }),
+			nodeResolve({
+				browser: mode === 'browser',
+				exportConditions: mode === 'node' ? ['node'] : [],
+				preferBuiltins: mode === 'node',
+			}),
 			commonjs({ esmExternals: mode === 'browser', sourceMap: sourcemap }),
 			json(),
 			mode === 'browser'

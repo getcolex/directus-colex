@@ -13,7 +13,6 @@ import { useI18n } from 'vue-i18n';
 import SettingsNavigation from '../../components/navigation.vue';
 import InlineFilter from './components/inline-filter.vue';
 import LogsDisplay from './components/logs-display.vue';
-import SystemLogsSidebarDetail from './components/system-logs-sidebar-detail.vue';
 import { Log } from './types';
 
 const { t } = useI18n();
@@ -417,39 +416,36 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<private-view :title="t('settings_system_logs')">
-		<template #headline><v-breadcrumb :items="[{ name: t('settings'), to: '/settings' }]" /></template>
-		<template #title-outer:prepend>
-			<v-button class="header-icon" rounded icon exact disabled>
-				<v-icon name="terminal" />
-			</v-button>
-		</template>
+	<private-view :title="$t('settings_system_logs')" icon="terminal">
+		<template #headline><v-breadcrumb :items="[{ name: $t('settings'), to: '/settings' }]" /></template>
 
 		<template #actions>
-			<v-button v-if="shouldStream && !streamConnected" v-tooltip.bottom="t('loading')" rounded icon disabled>
+			<v-button v-if="shouldStream && !streamConnected" v-tooltip.bottom="$t('loading')" rounded icon disabled small>
 				<v-progress-circular small indeterminate />
 			</v-button>
 			<v-button
 				v-else-if="!shouldStream"
-				v-tooltip.bottom="t('resume_streaming_logs')"
+				v-tooltip.bottom="$t('resume_streaming_logs')"
 				rounded
 				icon
+				small
 				@click="resumeLogsStreaming"
 			>
-				<v-icon name="play_arrow" />
+				<v-icon name="play_arrow" small />
 			</v-button>
-			<v-button v-else v-tooltip.bottom="t('pause_streaming_logs')" rounded icon @click="pauseLogsStreaming">
-				<v-icon name="pause" />
+			<v-button v-else v-tooltip.bottom="$t('pause_streaming_logs')" rounded icon small @click="pauseLogsStreaming">
+				<v-icon name="pause" small />
 			</v-button>
 			<v-button
-				v-tooltip.bottom="t('clear_logs')"
+				v-tooltip.bottom="$t('clear_logs')"
 				rounded
 				icon
 				:disabled="logs.length === 0"
 				class="action-clear"
+				small
 				@click="clearLogs"
 			>
-				<v-icon name="mop" />
+				<v-icon name="mop" small />
 			</v-button>
 		</template>
 
@@ -488,7 +484,7 @@ onUnmounted(() => {
 							<interface-input
 								:value="logDetailSearch"
 								class="full"
-								:placeholder="t('log_detail_filter_paths')"
+								:placeholder="$t('log_detail_filter_paths')"
 								icon-right="search"
 								spellcheck="false"
 								@input="logDetailSearch = $event"
@@ -506,16 +502,12 @@ onUnmounted(() => {
 							</v-button>
 						</div>
 						<div class="actions">
-							<v-checkbox v-model="softWrap" :label="t('soft_wrap_lines')" />
+							<v-checkbox v-model="softWrap" :label="$t('soft_wrap_lines')" />
 						</div>
 					</div>
 				</transition>
 			</div>
 		</div>
-
-		<template #sidebar>
-			<system-logs-sidebar-detail />
-		</template>
 	</private-view>
 </template>
 

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import api from '@/api';
 import { useEventListener } from '@/composables/use-event-listener';
-import { useExtension } from '@/composables/use-extension';
 import { Folder, useFolders } from '@/composables/use-folders';
 import { useCollectionPermissions } from '@/composables/use-permissions';
 import { usePreset } from '@/composables/use-preset';
@@ -9,6 +8,7 @@ import { emitter, Events } from '@/events';
 import { useFilesStore } from '@/stores/files.js';
 import { useNotificationsStore } from '@/stores/notifications';
 import { useUserStore } from '@/stores/user';
+import { getAssetUrl, getFilesUrl } from '@/utils/get-asset-url';
 import { getFolderFilter } from '@/utils/get-folder-filter';
 import { unexpectedError } from '@/utils/unexpected-error';
 import { uploadFiles } from '@/utils/upload-files';
@@ -18,16 +18,12 @@ import FolderPicker from '@/views/private/components/folder-picker.vue';
 import LayoutSidebarDetail from '@/views/private/components/layout-sidebar-detail.vue';
 import SearchInput from '@/views/private/components/search-input.vue';
 import { useLayout } from '@directus/composables';
-import { mergeFilters } from '@directus/utils';
+import { getDateTimeFormatted, mergeFilters } from '@directus/utils';
+import { storeToRefs } from 'pinia';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import AddFolder from '../components/add-folder.vue';
-import { storeToRefs } from 'pinia';
-
-type Item = {
-	[field: string]: any;
-};
 
 const props = defineProps<{
 	folder?: string;
@@ -42,13 +38,11 @@ const notificationsStore = useNotificationsStore();
 const { folders } = useFolders();
 
 const layoutRef = ref();
-const selection = ref<Item[]>([]);
+const selection = ref<string[]>([]);
 
 const userStore = useUserStore();
 
 const { layout, layoutOptions, layoutQuery, filter, search, resetPreset } = usePreset(ref('directus_files'));
-
-const currentLayout = useExtension('layout', layout);
 
 const { confirmDelete, deleting, batchDelete, batchEditActive } = useBatch();
 
@@ -357,6 +351,36 @@ function useFileUpload() {
 		emitter.emit(Events.upload);
 	}
 }
+
+async function downloadFiles() {
+	let response;
+
+	if (selection.value.length === 1) {
+		response = await fetch(getAssetUrl(selection.value[0]!));
+	} else {
+		response = await fetch(getFilesUrl(), {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ ids: selection.value }),
+		});
+	}
+
+	if (!response.ok) {
+		unexpectedError({ response: { data: await response.json() } });
+	}
+
+	const blob = await response.blob();
+	const filename = response.headers.get('Content-Disposition')?.match(/filename="(.*?)"/)?.[1];
+
+	const url = window.URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = filename ?? `unknown-${getDateTimeFormatted()}`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
 </script>
 
 <template>
@@ -374,20 +398,9 @@ function useFileUpload() {
 		collection="directus_files"
 		:reset-preset="resetPreset"
 	>
-		<private-view
-			:title="title"
-			:class="{ dragging }"
-			:small-header="currentLayout?.smallHeader"
-			:header-shadow="currentLayout?.headerShadow"
-		>
+		<private-view :title="title" icon="folder" :class="{ dragging }">
 			<template v-if="breadcrumb" #headline>
 				<v-breadcrumb :items="breadcrumb" />
-			</template>
-
-			<template #title-outer:prepend>
-				<v-button class="header-icon" rounded disabled icon secondary>
-					<v-icon name="folder" outline />
-				</v-button>
 			</template>
 
 			<template #actions:prepend>
@@ -395,7 +408,7 @@ function useFileUpload() {
 			</template>
 
 			<template #actions>
-				<search-input v-model="search" v-model:filter="filter" collection="directus_files" />
+				<search-input v-model="search" v-model:filter="filter" collection="directus_files" small />
 
 				<add-folder :parent="folder" :disabled="createFolderAllowed !== true" />
 
@@ -407,20 +420,21 @@ function useFileUpload() {
 				>
 					<template #activator="{ on }">
 						<v-button
-							v-tooltip.bottom="batchEditAllowed ? t('move_to_folder') : t('not_allowed')"
+							v-tooltip.bottom="batchEditAllowed ? $t('move_to_folder') : $t('not_allowed')"
 							rounded
 							icon
 							class="folder"
 							secondary
 							:disabled="!batchEditAllowed"
+							small
 							@click="on"
 						>
-							<v-icon name="folder_move" />
+							<v-icon name="folder_move" small />
 						</v-button>
 					</template>
 
 					<v-card>
-						<v-card-title>{{ t('move_to_folder') }}</v-card-title>
+						<v-card-title>{{ $t('move_to_folder') }}</v-card-title>
 
 						<v-card-text>
 							<folder-picker v-model="selectedFolder" />
@@ -428,10 +442,10 @@ function useFileUpload() {
 
 						<v-card-actions>
 							<v-button secondary @click="moveToDialogActive = false">
-								{{ t('cancel') }}
+								{{ $t('cancel') }}
 							</v-button>
 							<v-button :loading="moving" @click="moveToFolder">
-								{{ t('move') }}
+								{{ $t('move') }}
 							</v-button>
 						</v-card-actions>
 					</v-card>
@@ -440,27 +454,28 @@ function useFileUpload() {
 				<v-dialog v-if="selection.length > 0" v-model="confirmDelete" @esc="confirmDelete = false" @apply="batchDelete">
 					<template #activator="{ on }">
 						<v-button
-							v-tooltip.bottom="batchDeleteAllowed ? t('delete_label') : t('not_allowed')"
+							v-tooltip.bottom="batchDeleteAllowed ? $t('delete_label') : $t('not_allowed')"
 							:disabled="batchDeleteAllowed !== true"
 							rounded
 							icon
 							class="action-delete"
 							secondary
+							small
 							@click="on"
 						>
-							<v-icon name="delete" outline />
+							<v-icon name="delete" outline small />
 						</v-button>
 					</template>
 
 					<v-card>
-						<v-card-title>{{ t('batch_delete_confirm', selection.length) }}</v-card-title>
+						<v-card-title>{{ $t('batch_delete_confirm', selection.length) }}</v-card-title>
 
 						<v-card-actions>
 							<v-button secondary @click="confirmDelete = false">
-								{{ t('cancel') }}
+								{{ $t('cancel') }}
 							</v-button>
 							<v-button kind="danger" :loading="deleting" @click="batchDelete">
-								{{ t('delete_label') }}
+								{{ $t('delete_label') }}
 							</v-button>
 						</v-card-actions>
 					</v-card>
@@ -468,24 +483,38 @@ function useFileUpload() {
 
 				<v-button
 					v-if="selection.length > 0"
-					v-tooltip.bottom="batchEditAllowed ? t('edit') : t('not_allowed')"
+					v-tooltip.bottom="batchEditAllowed ? $t('edit') : $t('not_allowed')"
 					rounded
 					icon
 					secondary
 					:disabled="batchEditAllowed === false"
+					small
 					@click="batchEditActive = true"
 				>
-					<v-icon name="edit" outline />
+					<v-icon name="edit" outline small />
 				</v-button>
 
 				<v-button
-					v-tooltip.bottom="createAllowed ? t('upload_file') : t('not_allowed')"
+					v-if="selection.length > 0"
+					v-tooltip.bottom="$t('download')"
+					rounded
+					icon
+					secondary
+					download
+					@click="downloadFiles"
+				>
+					<v-icon name="download" outline />
+				</v-button>
+
+				<v-button
+					v-tooltip.bottom="createAllowed ? $t('upload_file') : $t('not_allowed')"
 					rounded
 					icon
 					:to="folder ? { path: `/files/folders/${folder}/+` } : { path: '/files/+' }"
 					:disabled="createAllowed === false"
+					small
 				>
-					<v-icon name="add" />
+					<v-icon name="add" small />
 				</v-button>
 			</template>
 
@@ -495,36 +524,36 @@ function useFileUpload() {
 
 			<component :is="`layout-${layout}`" v-bind="layoutState">
 				<template #no-results>
-					<v-info v-if="!filter && !search" :title="t('file_count', 0)" icon="folder" center>
-						{{ t('no_files_copy') }}
+					<v-info v-if="!filter && !search" :title="$t('file_count', 0)" icon="folder" center>
+						{{ $t('no_files_copy') }}
 
 						<template #append>
 							<v-button :to="folder ? { path: `/files/folders/${folder}/+` } : { path: '/files/+' }">
-								{{ t('add_file') }}
+								{{ $t('add_file') }}
 							</v-button>
 						</template>
 					</v-info>
 
-					<v-info v-else :title="t('no_results')" icon="search" center>
-						{{ t('no_results_copy') }}
+					<v-info v-else :title="$t('no_results')" icon="search" center>
+						{{ $t('no_results_copy') }}
 
 						<template #append>
-							<v-button @click="clearFilters">{{ t('clear_filters') }}</v-button>
+							<v-button @click="clearFilters">{{ $t('clear_filters') }}</v-button>
 						</template>
 					</v-info>
 				</template>
 
 				<template #no-items>
-					<v-info :title="t('file_count', 0)" icon="folder" center>
-						{{ t('no_files_copy') }}
+					<v-info :title="$t('file_count', 0)" icon="folder" center>
+						{{ $t('no_files_copy') }}
 
 						<template #append>
 							<v-button
-								v-tooltip.bottom="createAllowed ? t('add_file') : t('not_allowed')"
+								v-tooltip.bottom="createAllowed ? $t('add_file') : $t('not_allowed')"
 								:disabled="createAllowed === false"
 								:to="folder ? { path: `/files/folders/${folder}/+` } : { path: '/files/+' }"
 							>
-								{{ t('add_file') }}
+								{{ $t('add_file') }}
 							</v-button>
 						</template>
 					</v-info>
@@ -541,9 +570,6 @@ function useFileUpload() {
 			/>
 
 			<template #sidebar>
-				<sidebar-detail icon="info" :title="t('information')" close>
-					<div v-md="t('page_help_files_collection')" class="page-description" />
-				</sidebar-detail>
 				<layout-sidebar-detail v-model="layout">
 					<component :is="`layout-options-${layout}`" v-bind="layoutState" />
 				</layout-sidebar-detail>

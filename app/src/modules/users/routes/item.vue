@@ -10,7 +10,7 @@ import { useUserStore } from '@/stores/user';
 import { getAssetUrl } from '@/utils/get-asset-url';
 import { userName } from '@/utils/user-name';
 import CommentsSidebarDetail from '@/views/private/components/comments-sidebar-detail.vue';
-import RevisionsDrawerDetail from '@/views/private/components/revisions-drawer-detail.vue';
+import RevisionsSidebarDetail from '@/views/private/components/revisions-sidebar-detail.vue';
 import SaveOptions from '@/views/private/components/save-options.vue';
 import { useCollection } from '@directus/composables';
 import type { User } from '@directus/types';
@@ -40,7 +40,7 @@ const { breadcrumb } = useBreadcrumb();
 
 const { info: collectionInfo } = useCollection('directus_users');
 
-const revisionsDrawerDetail = ref<InstanceType<typeof RevisionsDrawerDetail> | null>(null);
+const revisionsSidebarDetail = ref<InstanceType<typeof RevisionsSidebarDetail> | null>(null);
 
 const {
 	isNew,
@@ -138,17 +138,6 @@ const archiveTooltip = computed(() => {
 useShortcut('meta+s', saveAndStay, form);
 useShortcut('meta+shift+s', saveAndAddNew, form);
 
-function navigateBack() {
-	const backState = router.options.history.state.back;
-
-	if (typeof backState !== 'string' || !backState.startsWith('/login')) {
-		router.back();
-		return;
-	}
-
-	router.push('/users');
-}
-
 function useBreadcrumb() {
 	const breadcrumb = computed(() => [
 		{
@@ -181,7 +170,7 @@ async function saveAndStay() {
 			const newPrimaryKey = savedItem.id;
 			router.replace(`/users/${newPrimaryKey}`);
 		} else {
-			revisionsDrawerDetail.value?.refresh?.();
+			revisionsSidebarDetail.value?.refresh?.();
 			refresh();
 		}
 	} catch {
@@ -279,13 +268,7 @@ function revert(values: Record<string, any>) {
 </script>
 
 <template>
-	<private-view :title="title">
-		<template #title-outer:prepend>
-			<v-button class="header-icon" rounded icon secondary exact @click="navigateBack">
-				<v-icon name="arrow_back" />
-			</v-button>
-		</template>
-
+	<private-view :title="title" show-back>
 		<template #headline>
 			<v-breadcrumb :items="breadcrumb" />
 		</template>
@@ -299,27 +282,28 @@ function revert(values: Record<string, any>) {
 			>
 				<template #activator="{ on }">
 					<v-button
-						v-tooltip.bottom="deleteAllowed ? t('delete_label') : t('not_allowed')"
+						v-tooltip.bottom="deleteAllowed ? $t('delete_label') : $t('not_allowed')"
 						rounded
 						icon
 						class="action-delete"
 						secondary
 						:disabled="item === null || deleteAllowed !== true"
+						small
 						@click="on"
 					>
-						<v-icon name="delete" />
+						<v-icon name="delete" small />
 					</v-button>
 				</template>
 
 				<v-card>
-					<v-card-title>{{ t('delete_are_you_sure') }}</v-card-title>
+					<v-card-title>{{ $t('delete_are_you_sure') }}</v-card-title>
 
 					<v-card-actions>
 						<v-button secondary @click="confirmDelete = false">
-							{{ t('cancel') }}
+							{{ $t('cancel') }}
 						</v-button>
 						<v-button kind="danger" :loading="deleting" @click="deleteAndQuit">
-							{{ t('delete_label') }}
+							{{ $t('delete_label') }}
 						</v-button>
 					</v-card-actions>
 				</v-card>
@@ -340,35 +324,37 @@ function revert(values: Record<string, any>) {
 						icon
 						secondary
 						:disabled="item === null || archiveAllowed !== true"
+						small
 						@click="on"
 					>
-						<v-icon :name="isArchived ? 'unarchive' : 'archive'" />
+						<v-icon :name="isArchived ? 'unarchive' : 'archive'" small />
 					</v-button>
 				</template>
 
 				<v-card>
-					<v-card-title>{{ isArchived ? t('unarchive_confirm') : t('archive_confirm') }}</v-card-title>
+					<v-card-title>{{ isArchived ? $t('unarchive_confirm') : $t('archive_confirm') }}</v-card-title>
 
 					<v-card-actions>
 						<v-button secondary @click="confirmArchive = false">
-							{{ t('cancel') }}
+							{{ $t('cancel') }}
 						</v-button>
 						<v-button kind="warning" :loading="archiving" @click="toggleArchive">
-							{{ isArchived ? t('unarchive') : t('archive') }}
+							{{ isArchived ? $t('unarchive') : $t('archive') }}
 						</v-button>
 					</v-card-actions>
 				</v-card>
 			</v-dialog>
 
 			<v-button
-				v-tooltip.bottom="saveAllowed ? t('save') : t('not_allowed')"
+				v-tooltip.bottom="saveAllowed ? $t('save') : $t('not_allowed')"
 				rounded
 				icon
 				:loading="saving"
 				:disabled="!isSavable"
+				small
 				@click="saveAndQuit"
 			>
-				<v-icon name="check" />
+				<v-icon name="check" small />
 
 				<template #append-outer>
 					<save-options
@@ -394,7 +380,7 @@ function revert(values: Record<string, any>) {
 					<v-image
 						v-else-if="avatarSrc && !avatarError"
 						:src="avatarSrc"
-						:alt="t('avatar')"
+						:alt="$t('avatar')"
 						@error="avatarError = $event"
 					/>
 					<v-icon v-else name="account_circle" x-large />
@@ -437,22 +423,22 @@ function revert(values: Record<string, any>) {
 
 		<v-dialog v-model="confirmLeave" @esc="confirmLeave = false" @apply="discardAndLeave">
 			<v-card>
-				<v-card-title>{{ t('unsaved_changes') }}</v-card-title>
-				<v-card-text>{{ t('unsaved_changes_copy') }}</v-card-text>
+				<v-card-title>{{ $t('unsaved_changes') }}</v-card-title>
+				<v-card-text>{{ $t('unsaved_changes_copy') }}</v-card-text>
 				<v-card-actions>
 					<v-button secondary @click="discardAndLeave">
-						{{ t('discard_changes') }}
+						{{ $t('discard_changes') }}
 					</v-button>
-					<v-button @click="confirmLeave = false">{{ t('keep_editing') }}</v-button>
+					<v-button @click="confirmLeave = false">{{ $t('keep_editing') }}</v-button>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
 
 		<template #sidebar>
 			<user-info-sidebar-detail :is-new="isNew" :user="item" />
-			<revisions-drawer-detail
+			<revisions-sidebar-detail
 				v-if="isNew === false && revisionsAllowed"
-				ref="revisionsDrawerDetail"
+				ref="revisionsSidebarDetail"
 				collection="directus_users"
 				:primary-key="primaryKey"
 				@revert="revert"
@@ -515,7 +501,7 @@ function revert(values: Record<string, any>) {
 			object-fit: cover;
 		}
 
-		@media (min-width: 600px) {
+		@media (width > 640px) {
 			inline-size: 144px;
 			block-size: 144px;
 			margin-inline-end: 22px;
@@ -565,7 +551,7 @@ function revert(values: Record<string, any>) {
 		}
 	}
 
-	@media (min-width: 600px) {
+	@media (width > 640px) {
 		block-size: 188px;
 
 		.user-box-content .location {

@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
-import { useHead } from '@unhead/vue';
+import LivePreview from '@/views/private/components/live-preview.vue';
 import ModuleBar from '@/views/private/components/module-bar.vue';
 import NotificationDialogs from '@/views/private/components/notification-dialogs.vue';
 import NotificationsGroup from '@/views/private/components/notifications-group.vue';
-import LivePreview from '@/views/private/components/live-preview.vue';
+import { useHead } from '@unhead/vue';
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import EditingLayer from '../components/editing-layer.vue';
+import type { NavigationData } from '../types';
 import { getUrlRoute } from '../utils/get-url-route';
 import { sameOrigin } from '../utils/same-origin';
-import type { NavigationData } from '../types';
 
 const { dynamicUrl, invalidUrl } = defineProps<{
 	urls: string[];
@@ -74,7 +74,7 @@ function onSelectUrl(newUrl: string, oldUrl: string) {
 		>
 			<template #prepend-header>
 				<v-button
-					v-tooltip.bottom.end="t('toggle_navigation')"
+					v-tooltip.bottom.end="$t('toggle_navigation')"
 					x-small
 					rounded
 					icon
@@ -85,7 +85,7 @@ function onSelectUrl(newUrl: string, oldUrl: string) {
 				</v-button>
 
 				<v-button
-					v-tooltip.bottom.end="t('toggle_editable_elements')"
+					v-tooltip.bottom.end="$t('toggle_editable_elements')"
 					x-small
 					rounded
 					icon
@@ -103,7 +103,7 @@ function onSelectUrl(newUrl: string, oldUrl: string) {
 		</live-preview>
 
 		<notification-dialogs />
-		<notifications-group no-sidebar />
+		<notifications-group />
 	</div>
 </template>
 

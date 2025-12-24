@@ -19,7 +19,7 @@ const props = withDefaults(
 	defineProps<{
 		collection: string;
 		field: string;
-		type: LocalType | null;
+		type?: LocalType | null;
 	}>(),
 	{
 		type: null,
@@ -114,7 +114,7 @@ async function save() {
 				small
 				autofocus
 				type="search"
-				:placeholder="t('search_field')"
+				:placeholder="$t('search_field')"
 				:full-width="false"
 			>
 				<template #prepend>
@@ -140,7 +140,7 @@ async function save() {
 	inline-size: 200px;
 	margin-inline-start: auto;
 
-	@media (min-width: 600px) {
+	@media (width > 640px) {
 		inline-size: 300px;
 		margin-block-start: 0;
 	}

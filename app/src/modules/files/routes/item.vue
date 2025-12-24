@@ -11,7 +11,7 @@ import FilePreviewReplace from '@/views/private/components/file-preview-replace.
 import FilesNavigation from '@/views/private/components/files-navigation.vue';
 import FolderPicker from '@/views/private/components/folder-picker.vue';
 import ImageEditor from '@/views/private/components/image-editor.vue';
-import RevisionsDrawerDetail from '@/views/private/components/revisions-drawer-detail.vue';
+import RevisionsSidebarDetail from '@/views/private/components/revisions-sidebar-detail.vue';
 import SaveOptions from '@/views/private/components/save-options.vue';
 import type { Field, File } from '@directus/types';
 import { computed, ref, toRefs, watch } from 'vue';
@@ -32,7 +32,7 @@ const form = ref<HTMLElement>();
 const { primaryKey } = toRefs(props);
 const { breadcrumb } = useBreadcrumb();
 
-const revisionsDrawerDetailRef = ref<InstanceType<typeof RevisionsDrawerDetail> | null>(null);
+const revisionsSidebarDetailRef = ref<InstanceType<typeof RevisionsSidebarDetail> | null>(null);
 
 const {
 	isNew,
@@ -92,21 +92,6 @@ const fieldsFiltered = computed(() => {
 	return fields.value.filter((field: Field) => fieldsDenyList.includes(field.field) === false);
 });
 
-function navigateBack() {
-	const backState = router.options.history.state.back;
-
-	if (typeof backState !== 'string' || !backState.startsWith('/login')) {
-		router.back();
-		return;
-	}
-
-	if (item?.value?.folder) {
-		router.push(`/files/folders/${item.value.folder}`);
-	} else {
-		router.push('/files');
-	}
-}
-
 function useBreadcrumb() {
 	const breadcrumb = computed(() => {
 		if (!item?.value?.folder) {
@@ -141,7 +126,7 @@ async function saveAndQuit() {
 async function saveAndStay() {
 	try {
 		await save();
-		revisionsDrawerDetailRef.value?.refresh?.();
+		revisionsSidebarDetailRef.value?.refresh?.();
 		refresh();
 	} catch {
 		// `save` will show unexpected error dialog
@@ -233,13 +218,7 @@ function revert(values: Record<string, any>) {
 
 <template>
 	<files-not-found v-if="!loading && !item" />
-	<private-view v-else :title="loading || !item ? t('loading') : item.title">
-		<template #title-outer:prepend>
-			<v-button class="header-icon" rounded icon secondary exact @click="navigateBack">
-				<v-icon name="arrow_back" />
-			</v-button>
-		</template>
-
+	<private-view v-else :title="loading || !item ? $t('loading') : item.title" show-back>
 		<template #headline>
 			<v-breadcrumb :items="breadcrumb" />
 		</template>
@@ -248,27 +227,28 @@ function revert(values: Record<string, any>) {
 			<v-dialog v-model="confirmDelete" @esc="confirmDelete = false" @apply="deleteAndQuit">
 				<template #activator="{ on }">
 					<v-button
-						v-tooltip.bottom="deleteAllowed ? t('delete_label') : t('not_allowed')"
+						v-tooltip.bottom="deleteAllowed ? $t('delete_label') : $t('not_allowed')"
 						rounded
 						icon
 						class="action-delete"
 						secondary
 						:disabled="item === null || deleteAllowed === false"
+						small
 						@click="on"
 					>
-						<v-icon name="delete" outline />
+						<v-icon name="delete" outline small />
 					</v-button>
 				</template>
 
 				<v-card>
-					<v-card-title>{{ t('delete_are_you_sure') }}</v-card-title>
+					<v-card-title>{{ $t('delete_are_you_sure') }}</v-card-title>
 
 					<v-card-actions>
 						<v-button secondary @click="confirmDelete = false">
-							{{ t('cancel') }}
+							{{ $t('cancel') }}
 						</v-button>
 						<v-button kind="danger" :loading="deleting" @click="deleteAndQuit">
-							{{ t('delete_label') }}
+							{{ $t('delete_label') }}
 						</v-button>
 					</v-card-actions>
 				</v-card>
@@ -282,19 +262,20 @@ function revert(values: Record<string, any>) {
 			>
 				<template #activator="{ on }">
 					<v-button
-						v-tooltip.bottom="item === null || !updateAllowed ? t('not_allowed') : t('move_to_folder')"
+						v-tooltip.bottom="item === null || !updateAllowed ? $t('not_allowed') : $t('move_to_folder')"
 						rounded
 						icon
 						secondary
 						:disabled="item === null || !updateAllowed"
+						small
 						@click="on"
 					>
-						<v-icon name="folder_move" />
+						<v-icon name="folder_move" small />
 					</v-button>
 				</template>
 
 				<v-card>
-					<v-card-title>{{ t('move_to_folder') }}</v-card-title>
+					<v-card-title>{{ $t('move_to_folder') }}</v-card-title>
 
 					<v-card-text>
 						<folder-picker v-model="selectedFolder" />
@@ -302,45 +283,48 @@ function revert(values: Record<string, any>) {
 
 					<v-card-actions>
 						<v-button secondary @click="moveToDialogActive = false">
-							{{ t('cancel') }}
+							{{ $t('cancel') }}
 						</v-button>
 						<v-button :loading="moving" @click="moveToFolder">
-							{{ t('move') }}
+							{{ $t('move') }}
 						</v-button>
 					</v-card-actions>
 				</v-card>
 			</v-dialog>
 			<v-button
-				v-tooltip.bottom="t('download')"
+				v-tooltip.bottom="$t('download')"
 				secondary
 				icon
 				rounded
 				:download="item?.filename_download"
 				:href="getAssetUrl(props.primaryKey, { isDownload: true })"
+				small
 			>
-				<v-icon name="download" />
+				<v-icon name="download" small />
 			</v-button>
 
 			<v-button
 				v-if="item?.type?.includes('image') && updateAllowed"
-				v-tooltip.bottom="t('edit')"
+				v-tooltip.bottom="$t('edit')"
 				rounded
 				icon
 				secondary
+				small
 				@click="editActive = true"
 			>
-				<v-icon name="tune" />
+				<v-icon name="tune" small />
 			</v-button>
 
 			<v-button
-				v-tooltip.bottom="saveAllowed ? t('save') : t('not_allowed')"
+				v-tooltip.bottom="saveAllowed ? $t('save') : $t('not_allowed')"
 				rounded
 				icon
 				:loading="saving"
 				:disabled="!isSavable"
+				small
 				@click="saveAndQuit"
 			>
-				<v-icon name="check" />
+				<v-icon name="check" small />
 
 				<template #append-outer>
 					<save-options
@@ -377,22 +361,22 @@ function revert(values: Record<string, any>) {
 
 		<v-dialog v-model="confirmLeave" @esc="confirmLeave = false" @apply="discardAndLeave">
 			<v-card>
-				<v-card-title>{{ t('unsaved_changes') }}</v-card-title>
-				<v-card-text>{{ t('unsaved_changes_copy') }}</v-card-text>
+				<v-card-title>{{ $t('unsaved_changes') }}</v-card-title>
+				<v-card-text>{{ $t('unsaved_changes_copy') }}</v-card-text>
 				<v-card-actions>
 					<v-button secondary @click="discardAndLeave">
-						{{ t('discard_changes') }}
+						{{ $t('discard_changes') }}
 					</v-button>
-					<v-button @click="confirmLeave = false">{{ t('keep_editing') }}</v-button>
+					<v-button @click="confirmLeave = false">{{ $t('keep_editing') }}</v-button>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
 
 		<template #sidebar>
 			<file-info-sidebar-detail :file="item" :is-new="isNew" />
-			<revisions-drawer-detail
+			<revisions-sidebar-detail
 				v-if="isNew === false && revisionsAllowed"
-				ref="revisionsDrawerDetailRef"
+				ref="revisionsSidebarDetailRef"
 				collection="directus_files"
 				:primary-key="primaryKey"
 				@revert="revert"
