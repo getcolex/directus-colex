@@ -41,12 +41,12 @@ for TASK_ID in $TASK_IDS; do
     
     echo "[$COUNTER/$TASK_COUNT] Updating: $TASK_NAME (Status: $TASK_STATUS)"
     
-    # Trigger update by setting updated_at (minimal change)
+    # Trigger update by setting status to its current value
     # This will fire the populate-button-context hook which will resync button_context
     RESULT=$(curl -s -X PATCH "$API_URL/items/tasks/$TASK_ID" \
         -H "Authorization: $AUTH_TOKEN" \
         -H "Content-Type: application/json" \
-        -d "{}")
+        -d "{\"status\": \"$TASK_STATUS\"}")
     
     # Check if successful
     if echo "$RESULT" | jq -e '.data.id' > /dev/null 2>&1; then
