@@ -6,7 +6,7 @@
   "keywords": [
     "directus",
     "directus-extension",
-    "directus-custom-theme"
+    "directus-theme"
   ],
   "directus:extension": {
     "type": "theme",
