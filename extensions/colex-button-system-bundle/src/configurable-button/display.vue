@@ -664,6 +664,9 @@ export default defineComponent({
 					case 'create_item_single':
 						await handleCreateItemSingleAction(config);
 						break;
+					case 'run_agent':
+						await handleRunAgentAction(config);
+						break;
 					default:
 						notificationsStore.add({
 							title: 'Error',
@@ -788,6 +791,41 @@ export default defineComponent({
 
 			// Navigate to collection (filtering not supported by Directus admin UI)
 			router.push(`/content/${collection}`);
+		};
+
+		const handleRunAgentAction = async (config) => {
+			const { action_type, id, task_id, success_message, error_message } = config;
+
+			// Get task_id from config - prefer explicit task_id, fallback to id
+			const taskIdToUse = task_id || id;
+
+			if (!taskIdToUse) {
+				throw new Error('Task ID is required for run_agent action');
+			}
+
+			if (!action_type) {
+				throw new Error('action_type is required for run_agent action (e.g., find_competitors)');
+			}
+
+			try {
+				// Call orchestrator directly - NO SSRF validation needed
+				// The orchestrator is a server-side Directus extension that CAN call localhost
+				const response = await api.post('/orchestrator/execute', {
+					agent_type: 'workflow',
+					action_type: action_type,
+					task_id: taskIdToUse
+				});
+
+				notificationsStore.add({
+					title: 'Agent Started',
+					text: success_message || `Agent ${action_type} started successfully`,
+					type: 'success',
+				});
+
+				return response.data;
+			} catch (error) {
+				throw new Error(error_message || error.response?.data?.error || error.message || 'Agent execution failed');
+			}
 		};
 
 		// State for create item drawer
