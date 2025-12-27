@@ -7,7 +7,7 @@
 
 export default {
 	id: 'webhook-proxy',
-	handler: (router, { logger }) => {
+	handler: (router) => {
 		/**
 		 * POST /webhook-proxy
 		 *
@@ -151,12 +151,11 @@ export default {
 				}
 
 				// Log webhook execution (for audit trail)
-				logger.info({
+				console.log('[Webhook Proxy] Executing webhook:', {
 					url,
 					method: normalizedMethod,
-					user: req.accountability?.user || 'unknown',
-				}, '[Webhook Proxy] Executing webhook');
-
+					user: req.accountability?.user || 'unknown'
+				});
 				const startTime = Date.now();
 
 				// Execute webhook request with timeout handling
@@ -166,20 +165,20 @@ export default {
 					clearTimeout(timeout);
 
 					const duration = Date.now() - startTime;
-					logger.info({
+					console.log('[Webhook Proxy] Webhook response:', {
 						url,
 						status: response.status,
 						duration: `${duration}ms`,
-						ok: response.ok,
-					}, '[Webhook Proxy] Webhook response');
+						ok: response.ok
+					});
 				} catch (fetchError) {
 					clearTimeout(timeout);
 
 					if (fetchError.name === 'AbortError') {
-						logger.warn({ url, duration: '30000ms' }, '[Webhook Proxy] Webhook timeout');
+						console.error('[Webhook Proxy] Webhook timeout:', { url, duration: '30000ms' });
 						throw new Error('Webhook request timed out after 30 seconds');
 					}
-					logger.error({ url, error: fetchError.message }, '[Webhook Proxy] Webhook fetch error');
+					console.error('[Webhook Proxy] Webhook fetch error:', { url, error: fetchError.message });
 					throw fetchError;
 				}
 
@@ -207,7 +206,7 @@ export default {
 				});
 
 			} catch (error) {
-				logger.error(error, '[Webhook Proxy] Error');
+				console.error('[Webhook Proxy] Error:', error);
 				return res.status(500).json({
 					error: error.message || 'Failed to execute webhook',
 				});

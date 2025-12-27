@@ -58,7 +58,7 @@
 		"export": "npm pack && tar -xzf colex-button-system-bundle-1.0.0.tgz && zip -r colex-button-system-bundle-1.0.0.zip package && rm -rf package colex-button-system-bundle-1.0.0.tgz"
 	},
 	"devDependencies": {
-		"@directus/extensions-sdk": "catalog:",
+		"@directus/extensions-sdk": "^12.0.2",
 		"@vitejs/plugin-vue": "^5.0.4",
 		"@vue/test-utils": "^2.4.4",
 		"happy-dom": "^13.3.8",

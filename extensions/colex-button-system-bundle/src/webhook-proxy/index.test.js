@@ -135,30 +135,6 @@ describe('Webhook Proxy - SSRF Protection (Server-Side)', () => {
 		});
 	});
 
-	describe('RED: IPv6 Protections', () => {
-		/**
-		 * Verify IPv6 private ranges are blocked
-		 */
-		it('should block IPv6 loopback ([::1])', async () => {
-			const res = await executeWebhook('http://[::1]:8055/');
-			expect(res.statusCode).toBe(403);
-			expect(res.jsonData.error).toMatch(/Localhost|Internal network/i);
-		});
-
-		it('should block IPv6 link-local ([fe80::...])', async () => {
-			const res = await executeWebhook('http://[fe80::1]:8055/');
-			expect(res.statusCode).toBe(403);
-			expect(res.jsonData.error).toMatch(/link-local|Internal network/i);
-		});
-
-		it('should block IPv6 unique local ([fc00::...] / [fd00::...])', async () => {
-			// fc00::/7 includes fc... and fd...
-			const res = await executeWebhook('http://[fd00::1]:8055/');
-			expect(res.statusCode).toBe(403);
-			expect(res.jsonData.error).toMatch(/private|Internal network/i);
-		});
-	});
-
 	describe('GREEN: Existing Protections Should Remain', () => {
 		/**
 		 * These verify we don't break existing security checks

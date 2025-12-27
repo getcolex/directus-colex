@@ -113,11 +113,10 @@ export default ({ filter, action }) => {
 		if (!hasRelevantUpdate) return;
 
 		try {
-			// Optimization: Fetch all items in one query instead of N+1
-			const items = await database(collection).whereIn('id', keys);
+			for (const key of keys) {
+				const item = await database(collection).where({ id: key }).first();
+				if (!item) continue;
 
-			// Process updates in parallel
-			await Promise.all(items.map(async (item) => {
 				// Parse existing button_context or create new
 				let button_context = {};
 				if (item.button_context) {
@@ -135,9 +134,9 @@ export default ({ filter, action }) => {
 				button_context = { ...button_context, ...updated };
 
 				await database(collection)
-					.where({ id: item.id })
+					.where({ id: key })
 					.update({ button_context: JSON.stringify(button_context) });
-			}));
+			}
 		} catch (error) {
 			// Silently fail - don't block item update
 		}

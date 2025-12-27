@@ -1,11 +1,10 @@
 import { ref, computed, watch } from 'vue';
-import type { Ref } from 'vue';
 import { useItems } from '@directus/extensions-sdk';
 
-export function useOutputs(collection: Ref<string | null>, filter: Ref<Record<string, any>>) {
-	const outputs = ref<Record<string, any>[]>([]);
+export function useOutputs(collection, filter) {
+	const outputs = ref([]);
 	const loading = ref(false);
-	const error = ref<any>(null);
+	const error = ref(null);
 
 	const stats = computed(() => {
 		const total = outputs.value?.length || 0;
@@ -25,21 +24,23 @@ export function useOutputs(collection: Ref<string | null>, filter: Ref<Record<st
 	};
 
 	// Use the official useItems composable
-	const { getItems, items, loading: itemsLoading, error: itemsError } = useItems(collection as any, query as any);
+	const { getItems, items, loading: itemsLoading, error: itemsError } = useItems(collection, query);
 
 	// Watch items from useItems and sync to outputs
 	watch(items, (newItems) => {
-		outputs.value = (newItems as any) || [];
+		outputs.value = newItems || [];
 	}, { immediate: true });
 
 	// Watch loading state
 	watch(itemsLoading, (newLoading) => {
-		loading.value = newLoading as any;
+		loading.value = newLoading;
 	}, { immediate: true });
 
 	// Watch error state
 	watch(itemsError, (newError) => {
-		error.value = newError;
+		if (newError) {
+			error.value = newError;
+		}
 	}, { immediate: true });
 
 	const refresh = async () => {
@@ -47,10 +48,15 @@ export function useOutputs(collection: Ref<string | null>, filter: Ref<Record<st
 			return;
 		}
 
+		loading.value = true;
+		error.value = null;
+
 		try {
 			await getItems();
 		} catch (err) {
 			error.value = err;
+		} finally {
+			loading.value = false;
 		}
 	};
 
