@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import api from '@/api';
-import { useExtension } from '@/composables/use-extension';
 import { useCollectionPermissions } from '@/composables/use-permissions';
 import { usePreset } from '@/composables/use-preset';
 import { useServerStore } from '@/stores/server';
@@ -34,8 +33,6 @@ const selection = ref<string[]>([]);
 
 const { layout, layoutOptions, layoutQuery, filter, search, resetPreset } = usePreset(ref('directus_users'));
 const { addNewLink } = useLinks();
-
-const currentLayout = useExtension('layout', layout);
 
 const { confirmDelete, deleting, batchDelete, batchEditActive } = useBatch();
 
@@ -182,19 +179,9 @@ function clearFilters() {
 		collection="directus_users"
 		:reset-preset="resetPreset"
 	>
-		<private-view
-			:title="title"
-			:small-header="currentLayout?.smallHeader"
-			:header-shadow="currentLayout?.headerShadow"
-		>
+		<private-view :title="title" icon="people_alt">
 			<template v-if="breadcrumb" #headline>
 				<v-breadcrumb :items="breadcrumb" />
-			</template>
-
-			<template #title-outer:prepend>
-				<v-button class="header-icon" rounded disabled icon secondary>
-					<v-icon name="people_alt" />
-				</v-button>
 			</template>
 
 			<template #actions:prepend>
@@ -202,32 +189,33 @@ function clearFilters() {
 			</template>
 
 			<template #actions>
-				<search-input v-model="search" v-model:filter="filter" collection="directus_users" />
+				<search-input v-model="search" v-model:filter="filter" collection="directus_users" small />
 
 				<v-dialog v-if="selection.length > 0" v-model="confirmDelete" @esc="confirmDelete = false" @apply="batchDelete">
 					<template #activator="{ on }">
 						<v-button
-							v-tooltip.bottom="batchDeleteAllowed ? t('delete_label') : t('not_allowed')"
+							v-tooltip.bottom="batchDeleteAllowed ? $t('delete_label') : $t('not_allowed')"
 							:disabled="batchDeleteAllowed !== true"
 							rounded
 							icon
 							class="action-delete"
 							secondary
+							small
 							@click="on"
 						>
-							<v-icon name="delete" />
+							<v-icon name="delete" small />
 						</v-button>
 					</template>
 
 					<v-card>
-						<v-card-title>{{ t('batch_delete_confirm', selection.length) }}</v-card-title>
+						<v-card-title>{{ $t('batch_delete_confirm', selection.length) }}</v-card-title>
 
 						<v-card-actions>
 							<v-button secondary @click="confirmDelete = false">
-								{{ t('cancel') }}
+								{{ $t('cancel') }}
 							</v-button>
 							<v-button kind="danger" :loading="deleting" @click="batchDelete">
-								{{ t('delete_label') }}
+								{{ $t('delete_label') }}
 							</v-button>
 						</v-card-actions>
 					</v-card>
@@ -235,35 +223,38 @@ function clearFilters() {
 
 				<v-button
 					v-if="selection.length > 0"
-					v-tooltip.bottom="batchEditAllowed ? t('edit') : t('not_allowed')"
+					v-tooltip.bottom="batchEditAllowed ? $t('edit') : $t('not_allowed')"
 					rounded
 					icon
 					secondary
 					:disabled="batchEditAllowed === false"
+					small
 					@click="batchEditActive = true"
 				>
-					<v-icon name="edit" />
+					<v-icon name="edit" small />
 				</v-button>
 
 				<v-button
 					v-if="canInviteUsers"
-					v-tooltip.bottom="t('invite_users')"
+					v-tooltip.bottom="$t('invite_users')"
 					rounded
 					icon
 					secondary
+					small
 					@click="userInviteModalActive = true"
 				>
-					<v-icon name="person_add" />
+					<v-icon name="person_add" small />
 				</v-button>
 
 				<v-button
-					v-tooltip.bottom="createAllowed ? t('create_item') : t('not_allowed')"
+					v-tooltip.bottom="createAllowed ? $t('create_item') : $t('not_allowed')"
 					rounded
 					icon
 					:to="addNewLink"
 					:disabled="createAllowed === false"
+					small
 				>
-					<v-icon name="add" />
+					<v-icon name="add" small />
 				</v-button>
 			</template>
 
@@ -275,32 +266,32 @@ function clearFilters() {
 
 			<component :is="`layout-${layout}`" v-bind="layoutState">
 				<template #no-results>
-					<v-info v-if="!filter && !search" :title="t('user_count', 0)" icon="people_alt" center>
-						{{ t('no_users_copy') }}
+					<v-info v-if="!filter && !search" :title="$t('user_count', 0)" icon="people_alt" center>
+						{{ $t('no_users_copy') }}
 
 						<template v-if="canInviteUsers" #append>
 							<v-button :to="role ? { path: `/users/roles/${role}/+` } : { path: '/users/+' }">
-								{{ t('create_user') }}
+								{{ $t('create_user') }}
 							</v-button>
 						</template>
 					</v-info>
 
-					<v-info v-else :title="t('no_results')" icon="search" center>
-						{{ t('no_results_copy') }}
+					<v-info v-else :title="$t('no_results')" icon="search" center>
+						{{ $t('no_results_copy') }}
 
 						<template #append>
-							<v-button @click="clearFilters">{{ t('clear_filters') }}</v-button>
+							<v-button @click="clearFilters">{{ $t('clear_filters') }}</v-button>
 						</template>
 					</v-info>
 				</template>
 
 				<template #no-items>
-					<v-info :title="t('user_count', 0)" icon="people_alt" center>
-						{{ t('no_users_copy') }}
+					<v-info :title="$t('user_count', 0)" icon="people_alt" center>
+						{{ $t('no_users_copy') }}
 
 						<template v-if="canInviteUsers" #append>
 							<v-button :to="role ? { path: `/users/roles/${role}/+` } : { path: '/users/+' }">
-								{{ t('create_user') }}
+								{{ $t('create_user') }}
 							</v-button>
 						</template>
 					</v-info>
@@ -315,9 +306,6 @@ function clearFilters() {
 			/>
 
 			<template #sidebar>
-				<sidebar-detail icon="info" :title="t('information')" close>
-					<div v-md="t('page_help_users_collection')" class="page-description" />
-				</sidebar-detail>
 				<layout-sidebar-detail v-model="layout">
 					<component :is="`layout-options-${layout}`" v-bind="layoutState" />
 				</layout-sidebar-detail>

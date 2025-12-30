@@ -1,7 +1,11 @@
 {
 	"extends": "@directus/tsconfig/node22",
 	"compilerOptions": {
-		"outDir": "dist"
+		"outDir": "dist",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": false,
+		"verbatimModuleSyntax": false
 	},
 	"include": ["src", "directus-extension.test.ts"],
 	"typedocOptions": {

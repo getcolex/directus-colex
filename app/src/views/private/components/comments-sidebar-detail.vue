@@ -226,6 +226,7 @@ async function loadUserPreviews(comments: Comment[], regex: RegExp) {
 
 <template>
 	<sidebar-detail
+		id="comments"
 		:title
 		icon="chat_bubble_outline"
 		:badge="!loadingCount && commentsCount > 0 ? abbreviateNumber(commentsCount) : null"
@@ -236,7 +237,7 @@ async function loadUserPreviews(comments: Comment[], regex: RegExp) {
 		<v-progress-linear v-if="loading" indeterminate />
 
 		<div v-else-if="!comments || comments.length === 0" class="empty">
-			<div class="content">{{ t('no_comments') }}</div>
+			<div class="content">{{ $t('no_comments') }}</div>
 		</div>
 
 		<template v-for="group in comments" v-else :key="group.date.toString()">

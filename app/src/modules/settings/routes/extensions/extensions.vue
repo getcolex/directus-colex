@@ -4,16 +4,12 @@ import { ApiOutput } from '@directus/types';
 import { groupBy } from 'lodash';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
-import { useI18n } from 'vue-i18n';
 import SettingsNavigation from '../../components/navigation.vue';
 import ExtensionGroupDivider from './components/extension-group-divider.vue';
 import ExtensionItem from './components/extension-item.vue';
-import ExtensionsInfoSidebarDetail from './components/extensions-info-sidebar-detail.vue';
 import { ExtensionType } from './types';
 
 type ExtensionsMap = Record<ExtensionType, ApiOutput[]>;
-
-const { t } = useI18n();
 
 const extensionsStore = useExtensionsStore();
 const { extensions, loading } = storeToRefs(extensionsStore);
@@ -35,21 +31,11 @@ const extensionsByType = computed(() => {
 </script>
 
 <template>
-	<private-view :title="t('extensions')">
-		<template #headline><v-breadcrumb :items="[{ name: t('settings'), to: '/settings' }]" /></template>
-
-		<template #title-outer:prepend>
-			<v-button class="header-icon" rounded icon exact disabled>
-				<v-icon name="category" />
-			</v-button>
-		</template>
+	<private-view :title="$t('extensions')" icon="category">
+		<template #headline><v-breadcrumb :items="[{ name: $t('settings'), to: '/settings' }]" /></template>
 
 		<template #navigation>
 			<settings-navigation />
-		</template>
-
-		<template #sidebar>
-			<extensions-info-sidebar-detail />
 		</template>
 
 		<div v-if="extensions.length > 0 || loading === false" class="page-container">
@@ -70,8 +56,8 @@ const extensionsByType = computed(() => {
 				</div>
 			</template>
 
-			<v-info v-else icon="error" center :title="t('no_extensions')">
-				{{ t('no_extensions_copy') }}
+			<v-info v-else icon="error" center :title="$t('no_extensions')">
+				{{ $t('no_extensions_copy') }}
 			</v-info>
 		</div>
 	</private-view>
@@ -87,7 +73,6 @@ const extensionsByType = computed(() => {
 
 .page-container {
 	padding: var(--content-padding);
-	padding-block-start: 0;
 	max-inline-size: 1200px;
 }
 

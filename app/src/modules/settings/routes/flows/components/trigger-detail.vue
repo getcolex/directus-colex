@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { FlowRaw, TriggerType } from '@directus/types';
 import { computed, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { getTriggers } from '../triggers';
-
-const { t } = useI18n();
 
 const props = defineProps<{
 	open: boolean;
@@ -53,15 +50,15 @@ const currentTriggerOptionFields = computed(() => {
 <template>
 	<v-drawer
 		:model-value="open"
-		:title="t('change_trigger')"
-		:subtitle="t('trigger_options')"
+		:title="$t('change_trigger')"
+		:subtitle="$t('trigger_options')"
 		icon="offline_bolt"
 		persistent
 		@cancel="$emit('update:open', false)"
 	>
 		<template #actions>
-			<v-button v-tooltip.bottom="t('done')" icon rounded :disabled="!currentTrigger" @click="saveTrigger">
-				<v-icon name="check" />
+			<v-button v-tooltip.bottom="$t('done')" icon rounded :disabled="!currentTrigger" small @click="saveTrigger">
+				<v-icon name="check" small />
 			</v-button>
 		</template>
 
@@ -85,7 +82,7 @@ const currentTriggerOptionFields = computed(() => {
 
 .content {
 	padding: var(--content-padding);
-	padding-block: 0 var(--content-padding-bottom);
+	padding-block-end: var(--content-padding-bottom);
 
 	.grid {
 		@include mixins.form-grid;

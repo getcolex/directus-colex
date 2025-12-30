@@ -43,7 +43,7 @@ const props = withDefaults(
 
 const emit = defineEmits(['update:cameraOptions', 'update:limit']);
 
-const { t, n } = useI18n();
+const { n } = useI18n();
 
 const cameraOptionsWritable = useSync(props, 'cameraOptions', emit);
 const limitWritable = useSync(props, 'limit', emit);
@@ -94,7 +94,7 @@ limitWritable.value = selectedSize;
 				type="warning"
 				icon="wrong_location"
 				center
-				:title="t('layouts.map.invalid_geometry')"
+				:title="$t('layouts.map.invalid_geometry')"
 			>
 				{{ geojsonError }}
 			</v-info>
@@ -113,7 +113,7 @@ limitWritable.value = selectedSize;
 					/>
 				</div>
 				<div class="mapboxgl-ctrl-dropdown">
-					<span>{{ t('limit') }}</span>
+					<span>{{ $t('limit') }}</span>
 					<v-select :model-value="limit" :items="pageSizes" inline @update:model-value="limitWritable = +$event" />
 				</div>
 			</div>
@@ -148,7 +148,7 @@ limitWritable.value = selectedSize;
 .layout-map {
 	position: relative;
 	inline-size: 100%;
-	block-size: calc(100% - 60px);
+	block-size: 100%;
 }
 
 .center {

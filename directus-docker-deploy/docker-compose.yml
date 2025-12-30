@@ -1,6 +1,6 @@
 services:
   directus:
-    image: directus/directus:latest
+    image: directus/directus:11.14.0
     restart: unless-stopped
     ports:
       - "8055:8055"
@@ -33,7 +33,7 @@ services:
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
       # Force Schema Detection
       DB_EXCLUDE_TABLES: ""
-      EXTENSIONS_AUTO_RELOAD: true
+      EXTENSIONS_AUTO_RELOAD: "true"
       EXTENSIONS_PATH: /directus/extensions
       LOG_LEVEL: debug
       # Files storage
@@ -46,7 +46,7 @@ services:
       STORAGE_S3_BUCKET: colex-images
       STORAGE_S3_REGION: blr1
       STORAGE_S3_ENDPOINT: blr1.digitaloceanspaces.com
-      STORAGE_S3_FORCE_PATH_STYLE: false
+      STORAGE_S3_FORCE_PATH_STYLE: "false"
       STORAGE_S3_ACL: private
 
       # If you've enabled the Spaces CDN, set this so Directus generates CDN URLs:
@@ -57,7 +57,9 @@ services:
       - extensions:/directus/extensions
       - ./extensions/directus-extension-wcag-theme-colex-light:/directus/extensions/directus-extension-wcag-theme-colex-light
       - ./extensions/directus-extension-wcag-theme-colex-dark:/directus/extensions/directus-extension-wcag-theme-colex-dark
-
+      - ./extensions/directus-extension-json-interface:/directus/extensions/directus-extension-json-interface
+      # Colex button system bundle (replaces individual button extensions)
+      - ./extensions/colex-button-system-bundle:/directus/extensions/colex-button-system-bundle
 volumes:
   uploads:
   extensions:

@@ -40,6 +40,12 @@ debug
 
 # Temporary files
 TODO
+BACKLOG.md
+HANDOFF.md
+
+# Claude Code (local only)
+.claude/
+CLAUDE.md
 
 # Directus
 *.db

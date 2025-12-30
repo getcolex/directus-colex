@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useItem } from '@/composables/use-item';
-import RevisionsDrawerDetail from '@/views/private/components/revisions-drawer-detail.vue';
+import RevisionsSidebarDetail from '@/views/private/components/revisions-sidebar-detail.vue';
 import { computed, ref, toRefs } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -16,7 +16,7 @@ const router = useRouter();
 
 const { primaryKey } = toRefs(props);
 
-const revisionsDrawerDetailRef = ref<InstanceType<typeof RevisionsDrawerDetail> | null>(null);
+const revisionsSidebarDetailRef = ref<InstanceType<typeof RevisionsSidebarDetail> | null>(null);
 
 const { isNew, edits, item, loading, remove, deleting, validationErrors } = useItem(
 	ref('directus_webhooks'),
@@ -41,34 +41,28 @@ async function deleteAndQuit() {
 </script>
 
 <template>
-	<private-view :title="title">
+	<private-view :title="title" show-back>
 		<template #headline>
-			<v-breadcrumb :items="[{ name: t('settings_webhooks'), to: '/settings/webhooks' }]" />
-		</template>
-
-		<template #title-outer:prepend>
-			<v-button class="header-icon" rounded icon exact :to="`/settings/webhooks/`">
-				<v-icon name="arrow_back" />
-			</v-button>
+			<v-breadcrumb :items="[{ name: $t('settings_webhooks'), to: '/settings/webhooks' }]" />
 		</template>
 
 		<template #actions>
 			<v-dialog v-model="confirmDelete" @esc="confirmDelete = false" @apply="deleteAndQuit">
 				<template #activator="{ on }">
-					<v-button rounded icon class="action-delete" :disabled="item === null" @click="on">
-						<v-icon name="delete" />
+					<v-button rounded icon class="action-delete" :disabled="item === null" small @click="on">
+						<v-icon name="delete" small />
 					</v-button>
 				</template>
 
 				<v-card>
-					<v-card-title>{{ t('delete_are_you_sure') }}</v-card-title>
+					<v-card-title>{{ $t('delete_are_you_sure') }}</v-card-title>
 
 					<v-card-actions>
 						<v-button secondary @click="confirmDelete = false">
-							{{ t('cancel') }}
+							{{ $t('cancel') }}
 						</v-button>
 						<v-button kind="danger" :loading="deleting" @click="deleteAndQuit">
-							{{ t('delete_label') }}
+							{{ $t('delete_label') }}
 						</v-button>
 					</v-card-actions>
 				</v-card>
@@ -81,7 +75,7 @@ async function deleteAndQuit() {
 
 		<div class="deprecation-notice-wrapper">
 			<v-notice type="danger">
-				<span v-md="{ value: t('webhooks_deprecation_notice'), target: '_blank' }"></span>
+				<span v-md="{ value: $t('webhooks_deprecation_notice'), target: '_blank' }"></span>
 			</v-notice>
 		</div>
 
@@ -95,12 +89,9 @@ async function deleteAndQuit() {
 		/>
 
 		<template #sidebar>
-			<sidebar-detail icon="info" :title="t('information')" close>
-				<div v-md="t('page_help_settings_webhooks_item')" class="page-description" />
-			</sidebar-detail>
-			<revisions-drawer-detail
+			<revisions-sidebar-detail
 				v-if="isNew === false"
-				ref="revisionsDrawerDetailRef"
+				ref="revisionsSidebarDetailRef"
 				collection="directus_webhooks"
 				:primary-key="primaryKey"
 			/>

@@ -6,7 +6,6 @@ import { useCollectionsStore } from '@/stores/collections';
 import { useFieldsStore } from '@/stores/fields';
 import formatTitle from '@directus/format-title';
 import { computed, ref, toRefs } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import SettingsNavigation from '../../../components/navigation.vue';
 import FieldsManagement from './components/fields-management.vue';
@@ -18,8 +17,6 @@ const props = defineProps<{
 	field?: string;
 	type?: string;
 }>();
-
-const { t } = useI18n();
 
 const router = useRouter();
 
@@ -71,14 +68,9 @@ function discardAndLeave() {
 </script>
 
 <template>
-	<private-view :title="formatTitle(collection)">
+	<private-view :title="formatTitle(collection)" show-back>
 		<template #headline>
-			<v-breadcrumb :items="[{ name: t('settings_data_model'), to: '/settings/data-model' }]" />
-		</template>
-		<template #title-outer:prepend>
-			<v-button class="header-icon" rounded icon exact to="/settings/data-model">
-				<v-icon name="arrow_back" />
-			</v-button>
+			<v-breadcrumb :items="[{ name: $t('settings_data_model'), to: '/settings/data-model' }]" />
 		</template>
 
 		<template #actions>
@@ -86,41 +78,43 @@ function discardAndLeave() {
 				<template #activator="{ on }">
 					<v-button
 						v-if="isSystemCollection(collection) === false"
-						v-tooltip.bottom="t('delete_collection')"
+						v-tooltip.bottom="$t('delete_collection')"
 						rounded
 						icon
 						class="action-delete"
 						secondary
 						:disabled="!item"
+						small
 						@click="on"
 					>
-						<v-icon name="delete" />
+						<v-icon name="delete" small />
 					</v-button>
 				</template>
 
 				<v-card>
-					<v-card-title>{{ t('delete_are_you_sure') }}</v-card-title>
+					<v-card-title>{{ $t('delete_are_you_sure') }}</v-card-title>
 
 					<v-card-actions>
 						<v-button secondary @click="confirmDelete = false">
-							{{ t('cancel') }}
+							{{ $t('cancel') }}
 						</v-button>
 						<v-button kind="danger" :loading="deleting" @click="deleteAndQuit">
-							{{ t('delete_label') }}
+							{{ $t('delete_label') }}
 						</v-button>
 					</v-card-actions>
 				</v-card>
 			</v-dialog>
 
 			<v-button
-				v-tooltip.bottom="t('save')"
+				v-tooltip.bottom="$t('save')"
 				rounded
 				icon
 				:loading="saving"
 				:disabled="hasEdits === false"
+				small
 				@click="saveAndQuit"
 			>
-				<v-icon name="check" />
+				<v-icon name="check" small />
 			</v-button>
 		</template>
 
@@ -131,8 +125,8 @@ function discardAndLeave() {
 		<div class="collections-item">
 			<div class="fields">
 				<h2 class="title type-label">
-					{{ t('fields_and_layout') }}
-					<span class="instant-save">{{ t('saves_automatically') }}</span>
+					{{ $t('fields_and_layout') }}
+					<span class="instant-save">{{ $t('saves_automatically') }}</span>
 				</h2>
 				<fields-management :collection="collection" />
 			</div>
@@ -149,21 +143,15 @@ function discardAndLeave() {
 			/>
 		</div>
 
-		<template #sidebar>
-			<sidebar-detail icon="info" :title="t('information')" close>
-				<div v-md="t('page_help_settings_datamodel_fields')" class="page-description" />
-			</sidebar-detail>
-		</template>
-
 		<v-dialog v-model="confirmLeave" @esc="confirmLeave = false" @apply="discardAndLeave">
 			<v-card>
-				<v-card-title>{{ t('unsaved_changes') }}</v-card-title>
-				<v-card-text>{{ t('unsaved_changes_copy') }}</v-card-text>
+				<v-card-title>{{ $t('unsaved_changes') }}</v-card-title>
+				<v-card-text>{{ $t('unsaved_changes_copy') }}</v-card-text>
 				<v-card-actions>
 					<v-button secondary @click="discardAndLeave">
-						{{ t('discard_changes') }}
+						{{ $t('discard_changes') }}
 					</v-button>
-					<v-button @click="confirmLeave = false">{{ t('keep_editing') }}</v-button>
+					<v-button @click="confirmLeave = false">{{ $t('keep_editing') }}</v-button>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
@@ -182,7 +170,7 @@ function discardAndLeave() {
 
 .collections-item {
 	padding: var(--content-padding);
-	padding-block: 0 var(--content-padding-bottom);
+	padding-block-end: var(--content-padding-bottom);
 }
 
 .fields {

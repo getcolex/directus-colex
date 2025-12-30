@@ -140,37 +140,26 @@ function navigateToPolicy({ item }: { item: Policy }) {
 </script>
 
 <template>
-	<private-view :title="t('settings_permissions')">
-		<template #headline><v-breadcrumb :items="[{ name: t('settings'), to: '/settings' }]" /></template>
-
-		<template #title-outer:prepend>
-			<v-button class="header-icon" rounded icon exact disabled>
-				<v-icon name="admin_panel_settings" />
-			</v-button>
-		</template>
+	<private-view :title="$t('settings_permissions')" icon="admin_panel_settings">
+		<template #headline><v-breadcrumb :items="[{ name: $t('settings'), to: '/settings' }]" /></template>
 
 		<template #actions>
 			<search-input
 				v-if="!loading"
 				v-model="search"
 				:autofocus="policies.length > 25"
-				:placeholder="t('search_policy')"
+				:placeholder="$t('search_policy')"
 				:show-filter="false"
+				small
 			/>
 
-			<v-button v-tooltip.bottom="t('create_policy')" rounded icon :to="addNewLink">
-				<v-icon name="add" />
+			<v-button v-tooltip.bottom="$t('create_policy')" rounded icon :to="addNewLink" small>
+				<v-icon name="add" small />
 			</v-button>
 		</template>
 
 		<template #navigation>
 			<settings-navigation />
-		</template>
-
-		<template #sidebar>
-			<sidebar-detail icon="info" :title="t('information')" close>
-				<div v-md="t('page_help_settings_policies_collection')" class="page-description" />
-			</sidebar-detail>
 		</template>
 
 		<div v-if="!search || filteredPolicies.length > 0" class="policies">
@@ -197,11 +186,11 @@ function navigateToPolicy({ item }: { item: Policy }) {
 			</v-table>
 		</div>
 
-		<v-info v-else icon="search" :title="t('no_results')" center>
-			{{ t('no_results_copy') }}
+		<v-info v-else icon="search" :title="$t('no_results')" center>
+			{{ $t('no_results_copy') }}
 
 			<template #append>
-				<v-button @click="search = null">{{ t('clear_filters') }}</v-button>
+				<v-button @click="search = null">{{ $t('clear_filters') }}</v-button>
 			</template>
 		</v-info>
 
@@ -219,7 +208,7 @@ function navigateToPolicy({ item }: { item: Policy }) {
 
 .policies {
 	padding: var(--content-padding);
-	padding-block: 0 var(--content-padding-bottom);
+	padding-block-end: var(--content-padding-bottom);
 }
 
 .system {

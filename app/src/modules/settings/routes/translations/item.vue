@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, toRefs, unref } from 'vue';
-import { useI18n } from 'vue-i18n';
 
 import { useEditsGuard } from '@/composables/use-edits-guard';
 import { useItem } from '@/composables/use-item';
 import { useShortcut } from '@/composables/use-shortcut';
 import { refreshCurrentLanguage } from '@/lang/refresh-current-language';
 import CommentsSidebarDetail from '@/views/private/components/comments-sidebar-detail.vue';
-import FlowSidebarDetail from '@/views/private/components/flow-sidebar-detail.vue';
-import RevisionsDrawerDetail from '@/views/private/components/revisions-drawer-detail.vue';
+import RevisionsSidebarDetail from '@/views/private/components/revisions-sidebar-detail.vue';
 import SaveOptions from '@/views/private/components/save-options.vue';
 import { useCollection } from '@directus/composables';
 import { useRouter } from 'vue-router';
@@ -23,8 +21,6 @@ const props = withDefaults(defineProps<Props>(), {
 	primaryKey: null,
 });
 
-const { t } = useI18n();
-
 const router = useRouter();
 
 const form = ref<HTMLElement>();
@@ -32,7 +28,7 @@ const form = ref<HTMLElement>();
 const { primaryKey } = toRefs(props);
 const { breadcrumb } = useBreadcrumb();
 
-const revisionsDrawerDetailRef = ref<InstanceType<typeof RevisionsDrawerDetail> | null>(null);
+const revisionsSidebarDetailRef = ref<InstanceType<typeof RevisionsSidebarDetail> | null>(null);
 
 const {
 	info: collectionInfo,
@@ -100,17 +96,6 @@ const disabledOptions = computed(() => {
 	return [];
 });
 
-function navigateBack() {
-	const backState = router.options.history.state.back;
-
-	if (typeof backState !== 'string' || !backState.startsWith('/login')) {
-		router.back();
-		return;
-	}
-
-	router.push(`/settings/translations`);
-}
-
 function useBreadcrumb() {
 	const breadcrumb = computed(() => [
 		{
@@ -141,7 +126,7 @@ async function saveAndStay() {
 		const savedItem: Record<string, any> = await save();
 		await refreshCurrentLanguage();
 
-		revisionsDrawerDetailRef.value?.refresh?.();
+		revisionsSidebarDetailRef.value?.refresh?.();
 
 		if (props.primaryKey === '+') {
 			const newPrimaryKey = savedItem[primaryKeyField.value!.field];
@@ -217,37 +202,15 @@ async function revert(values: Record<string, any>) {
 <template>
 	<content-not-found v-if="error" />
 
-	<private-view v-else :title="primaryKey === '+' ? t('create_custom_translation') : t('edit_custom_translation')">
-		<template #title-outer:prepend>
-			<v-button
-				v-if="collectionInfo?.meta && collectionInfo.meta.singleton === true"
-				class="header-icon"
-				rounded
-				icon
-				secondary
-				disabled
-			>
-				<v-icon :name="collectionInfo.icon" />
-			</v-button>
-
-			<v-button
-				v-else
-				v-tooltip.bottom="t('back')"
-				class="header-icon"
-				rounded
-				icon
-				secondary
-				exact
-				@click="navigateBack"
-			>
-				<v-icon name="arrow_back" />
-			</v-button>
-		</template>
-
+	<private-view
+		v-else
+		:title="primaryKey === '+' ? $t('create_custom_translation') : $t('edit_custom_translation')"
+		show-back
+	>
 		<template #headline>
 			<v-breadcrumb
 				v-if="collectionInfo?.meta && collectionInfo.meta.singleton === true"
-				:items="[{ name: t('content'), to: '/content' }]"
+				:items="[{ name: $t('content'), to: '/content' }]"
 			/>
 			<v-breadcrumb v-else :items="breadcrumb" />
 		</template>
@@ -257,34 +220,43 @@ async function revert(values: Record<string, any>) {
 				<template #activator="{ on }">
 					<v-button
 						v-if="collectionInfo!.meta && collectionInfo!.meta.singleton === false"
-						v-tooltip.bottom="t('delete_label')"
+						v-tooltip.bottom="$t('delete_label')"
 						rounded
 						icon
 						class="action-delete"
 						secondary
 						:disabled="item === null"
+						small
 						@click="on"
 					>
-						<v-icon name="delete" outline />
+						<v-icon name="delete" outline small />
 					</v-button>
 				</template>
 
 				<v-card>
-					<v-card-title>{{ t('delete_are_you_sure') }}</v-card-title>
+					<v-card-title>{{ $t('delete_are_you_sure') }}</v-card-title>
 
 					<v-card-actions>
 						<v-button secondary @click="confirmDelete = false">
-							{{ t('cancel') }}
+							{{ $t('cancel') }}
 						</v-button>
 						<v-button kind="danger" :loading="deleting" @click="deleteAndQuit">
-							{{ t('delete_label') }}
+							{{ $t('delete_label') }}
 						</v-button>
 					</v-card-actions>
 				</v-card>
 			</v-dialog>
 
-			<v-button v-tooltip.bottom="t('save')" rounded icon :loading="saving" :disabled="!isSavable" @click="saveAndQuit">
-				<v-icon name="check" />
+			<v-button
+				v-tooltip.bottom="$t('save')"
+				rounded
+				icon
+				:loading="saving"
+				:disabled="!isSavable"
+				small
+				@click="saveAndQuit"
+			>
+				<v-icon name="check" small />
 
 				<template #append-outer>
 					<save-options
@@ -315,38 +287,28 @@ async function revert(values: Record<string, any>) {
 
 		<v-dialog v-model="confirmLeave" @esc="confirmLeave = false" @apply="discardAndLeave">
 			<v-card>
-				<v-card-title>{{ t('unsaved_changes') }}</v-card-title>
-				<v-card-text>{{ t('unsaved_changes_copy') }}</v-card-text>
+				<v-card-title>{{ $t('unsaved_changes') }}</v-card-title>
+				<v-card-text>{{ $t('unsaved_changes_copy') }}</v-card-text>
 				<v-card-actions>
 					<v-button secondary @click="discardAndLeave">
-						{{ t('discard_changes') }}
+						{{ $t('discard_changes') }}
 					</v-button>
-					<v-button @click="confirmLeave = false">{{ t('keep_editing') }}</v-button>
+					<v-button @click="confirmLeave = false">{{ $t('keep_editing') }}</v-button>
 				</v-card-actions>
 			</v-card>
 		</v-dialog>
 
 		<template #sidebar>
-			<sidebar-detail icon="info" :title="t('information')" close>
-				<div v-md="t('page_help_settings_translations_item')" class="page-description" />
-			</sidebar-detail>
 			<template v-if="isNew === false && loading === false && internalPrimaryKey">
-				<revisions-drawer-detail
+				<revisions-sidebar-detail
 					v-if="accountabilityScope === 'all'"
-					ref="revisionsDrawerDetailRef"
+					ref="revisionsSidebarDetailRef"
 					collection="directus_translations"
 					:primary-key="internalPrimaryKey"
 					:scope="accountabilityScope"
 					@revert="revert"
 				/>
 				<comments-sidebar-detail collection="directus_translations" :primary-key="internalPrimaryKey" />
-				<flow-sidebar-detail
-					location="item"
-					collection="directus_translations"
-					:primary-key="internalPrimaryKey"
-					:has-edits="hasEdits"
-					@refresh="refresh"
-				/>
 			</template>
 		</template>
 	</private-view>
@@ -368,7 +330,7 @@ async function revert(values: Record<string, any>) {
 	padding: calc(var(--content-padding) * 3) var(--content-padding) var(--content-padding);
 	padding-block-end: var(--content-padding-bottom);
 
-	@media (min-width: 600px) {
+	@media (width > 640px) {
 		padding: var(--content-padding);
 		padding-block-end: var(--content-padding-bottom);
 	}
