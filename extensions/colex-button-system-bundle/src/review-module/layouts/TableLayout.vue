@@ -127,18 +127,39 @@ const formatFieldName = (field) => {
 		.replace(/\b\w/g, c => c.toUpperCase());
 };
 
-// Build table headers
+// Build table headers with intelligent column widths
 const tableHeaders = computed(() => {
 	const headers = [];
 
 	// Only show fields explicitly passed by user (no fallback, no filtering)
 	const fieldsToShow = props.fields || [];
+	const fieldCount = fieldsToShow.length;
 
-	// Add data field headers (fill available space dynamically)
+	// Calculate appropriate column width based on number of fields
+	// More columns = smaller minimum widths, but always readable
+	const getColumnWidth = (field) => {
+		// Short fields get smaller widths
+		const shortFields = ['id', 'status', 'output_status'];
+		if (shortFields.includes(field)) return 80;
+
+		// Date fields need medium width
+		if (field.includes('date') || field.includes('_at')) return 140;
+
+		// UUID/ID fields need more space
+		if (field === 'image' || field.includes('_id')) return 160;
+
+		// Dynamic width based on total column count
+		if (fieldCount <= 3) return 200; // Few columns - wider
+		if (fieldCount <= 5) return 160; // Medium - balanced
+		return 140; // Many columns - compact but readable
+	};
+
+	// Add data field headers with calculated widths
 	fieldsToShow.forEach(field => {
 		headers.push({
 			text: formatFieldName(field),
 			value: field,
+			width: getColumnWidth(field),
 			sortable: false
 		});
 	});
@@ -147,7 +168,7 @@ const tableHeaders = computed(() => {
 	headers.push({
 		text: 'Status',
 		value: 'output_status',
-		width: 140,
+		width: 130,
 		sortable: false,
 		align: 'right'
 	});
@@ -156,7 +177,7 @@ const tableHeaders = computed(() => {
 	headers.push({
 		text: 'Actions',
 		value: 'actions',
-		width: 120,
+		width: 100,
 		sortable: false,
 		align: 'right'
 	});
@@ -164,11 +185,29 @@ const tableHeaders = computed(() => {
 	return headers;
 });
 
-// Generate dynamic grid template based on field count
+// Generate dynamic grid template based on calculated header widths
 const gridTemplate = computed(() => {
-	const contentColCount = (props.fields || []).length;
-	const contentCols = contentColCount > 0 ? Array(contentColCount).fill('1fr').join(' ') : '';
-	return contentCols ? `${contentCols} 140px 120px` : '140px 120px';
+	const headers = tableHeaders.value;
+	if (headers.length === 0) return '130px 100px';
+
+	const fieldCount = props.fields?.length || 0;
+
+	// For few columns (≤3 content fields), use flexible widths so columns stretch
+	// Status (130px) and Actions (100px) stay fixed, content columns flex
+	if (fieldCount <= 3) {
+		const colWidths = headers.map(h => {
+			// Keep status and actions fixed
+			if (h.value === 'output_status') return '130px';
+			if (h.value === 'actions') return '100px';
+			// Content columns get flexible width with minimum
+			return `minmax(${h.width}px, 1fr)`;
+		});
+		return colWidths.join(' ');
+	}
+
+	// For many columns, use fixed widths to ensure readability
+	const colWidths = headers.map(h => `${h.width}px`);
+	return colWidths.join(' ');
 });
 
 const handleRowClick = ({ item }) => {
@@ -196,7 +235,12 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	width: 100%;
 	max-width: 100%;
 	max-height: 70vh; /* Scrollable table with sticky headers */
-	overflow-y: auto;
+	overflow: auto; /* Allow both horizontal and vertical scrolling */
+}
+
+/* Ensure table can expand beyond container when many columns */
+:deep(.v-table table) {
+	min-width: 100%;
 }
 
 /* Override v-table's CSS Grid column widths - force content columns to use flexible sizing */
