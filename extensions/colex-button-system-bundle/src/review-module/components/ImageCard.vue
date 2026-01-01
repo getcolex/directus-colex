@@ -235,21 +235,21 @@ const openImage = () => {
 
 <style scoped>
 .image-card {
-	border: 2px solid var(--border-normal);
+	border: 1px solid var(--border-normal);
 	border-radius: 8px;
 	overflow: hidden;
 	transition: all 0.2s;
 	position: relative;
 	background: var(--background-page);
 	break-inside: avoid;
-	margin-bottom: 16px;
 	display: inline-block;
 	width: 100%;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .image-card:hover {
-	border-color: var(--border-normal-alt);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	border-color: var(--primary);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .image-card.approved {

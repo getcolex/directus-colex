@@ -12,8 +12,6 @@
 				:item="item"
 				:fields="fields"
 				:permissions="permissions"
-				:selected="selected.includes(item.id)"
-				@toggle-select="toggleSelect(item.id)"
 				@approve="$emit('approve', [item.id])"
 				@reject="$emit('reject', [item.id])"
 				@delete="$emit('delete', [item.id])"
@@ -45,21 +43,10 @@ const props = defineProps({
 	loading: {
 		type: Boolean,
 		default: false
-	},
-	selected: {
-		type: Array,
-		default: () => []
 	}
 });
 
-const emit = defineEmits(['approve', 'reject', 'delete', 'edit', 'update:selected']);
-
-const toggleSelect = (id) => {
-	const newSelected = props.selected.includes(id)
-		? props.selected.filter(s => s !== id)
-		: [...props.selected, id];
-	emit('update:selected', newSelected);
-};
+const emit = defineEmits(['approve', 'reject', 'delete', 'edit']);
 </script>
 
 <style scoped>
@@ -85,8 +72,13 @@ const toggleSelect = (id) => {
 
 .gallery-grid {
 	column-count: 3;
-	column-gap: 16px;
-	padding: 4px;
+	column-gap: 24px;
+	padding: 8px;
+}
+
+/* Add spacing between cards */
+.gallery-grid > * {
+	margin-bottom: 24px;
 }
 
 /* Responsive columns */
