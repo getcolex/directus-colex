@@ -12,6 +12,7 @@
 				:item="item"
 				:fields="fields"
 				:permissions="permissions"
+				:showEmptyThumbnail="showEmptyThumbnail"
 				@approve="$emit('approve', [item.id])"
 				@reject="$emit('reject', [item.id])"
 				@delete="$emit('delete', [item.id])"
@@ -24,7 +25,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, computed } from 'vue';
 import ImageCard from '../components/ImageCard.vue';
 
 const props = defineProps({
@@ -44,6 +45,23 @@ const props = defineProps({
 		type: Boolean,
 		default: false
 	}
+});
+
+// Determine if we should show empty thumbnails
+// Only show them if at least one item has an image (mixed state)
+const showEmptyThumbnail = computed(() => {
+	if (!props.items || props.items.length === 0) return false;
+
+	const imageFields = ['url', 'image', 'thumbnail_url', 'file', 'image_url', 'thumbnail'];
+	const hasAnyImage = props.items.some(item =>
+		imageFields.some(field => item[field])
+	);
+	const hasAnyWithoutImage = props.items.some(item =>
+		!imageFields.some(field => item[field])
+	);
+
+	// Show placeholder only in mixed state (some have images, some don't)
+	return hasAnyImage && hasAnyWithoutImage;
 });
 
 const emit = defineEmits(['approve', 'reject', 'delete', 'edit']);
