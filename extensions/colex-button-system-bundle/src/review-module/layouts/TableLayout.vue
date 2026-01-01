@@ -9,68 +9,93 @@
 			/>
 		</div>
 
-		<!-- Simple table with native rendering -->
-		<v-table
-			v-else-if="items.length > 0"
-			v-model:headers="tableHeaders"
-			:items="items"
-			item-key="id"
-			fixed-header
-			:loading="loading"
-			:style="{ '--dynamic-grid-template': gridTemplate }"
-		>
-			<!-- Editable cell slots for each field -->
-			<template v-for="field in fields" :key="field" #[`item.${field}`]="{ item }">
-				<EditableCell
-					:value="item[field]"
-					:field-name="field"
-					:editable="permissions.edit"
-					@update="(newValue) => handleCellUpdate(item.id, field, newValue)"
-				/>
-			</template>
-
-			<!-- Status column with chip -->
-			<template #item.output_status="{ item }">
-				<div class="status-cell">
-					<div
-						v-if="item.date_updated && item.date_created && new Date(item.date_updated) > new Date(item.date_created)"
-						class="edited-badge"
-					>
-						<v-icon name="edit" small />
-					</div>
-					<v-chip :class="`status-${item.output_status}`" small>
-						{{ item.output_status }}
-					</v-chip>
-				</div>
-			</template>
-
-			<!-- Actions column with inline buttons -->
-			<template #item.actions="{ item }">
-				<div class="action-buttons">
-					<v-button
-						small
-						icon
-						:secondary="item.output_status !== 'approved'"
-						@click.stop="emit('approve', [item.id])"
-						:disabled="!permissions.edit"
-						:class="{ 'active-approve': item.output_status === 'approved' }"
-					>
-						<v-icon name="check" />
-					</v-button>
-
-					<v-button
-						small
-						icon
-						:secondary="item.output_status !== 'rejected'"
-						@click.stop="emit('reject', [item.id])"
-						:disabled="!permissions.edit"
-						:class="{ 'active-reject': item.output_status === 'rejected' }"
-					>
-						<v-icon name="close" />
-					</v-button>
-				</div>
-			</template>
-		</v-table>
+		<!-- Custom table with sticky columns and resizable headers -->
+		<div v-else-if="items.length > 0" class="custom-table-container">
+			<div class="table-wrapper">
+				<table class="custom-table">
+					<!-- Header row -->
+					<thead>
+						<tr>
+							<!-- Content column headers (resizable) -->
+							<th
+								v-for="(field, index) in fields"
+								:key="field"
+								class="content-header"
+								:style="{ width: columnWidths[field] + 'px', minWidth: '80px' }"
+							>
+								<span class="header-text">{{ formatFieldName(field) }}</span>
+								<div
+									class="resize-handle"
+									@mousedown.prevent.stop="(e) => startResize(e, field)"
+								></div>
+							</th>
+							<!-- Sticky Status header -->
+							<th class="sticky-header status-header">Status</th>
+							<!-- Sticky Actions header -->
+							<th class="sticky-header actions-header">Actions</th>
+						</tr>
+					</thead>
+					<!-- Body rows -->
+					<tbody>
+						<tr v-for="item in items" :key="item.id">
+							<!-- Content cells -->
+							<td
+								v-for="field in fields"
+								:key="field"
+								class="content-cell"
+								:style="{ width: columnWidths[field] + 'px', minWidth: '80px' }"
+							>
+								<EditableCell
+									:value="item[field]"
+									:field-name="field"
+									:editable="permissions.edit"
+									@update="(newValue) => handleCellUpdate(item.id, field, newValue)"
+								/>
+							</td>
+							<!-- Sticky Status cell -->
+							<td class="sticky-cell status-cell-td">
+								<div class="status-cell">
+									<div
+										v-if="item.date_updated && item.date_created && new Date(item.date_updated) > new Date(item.date_created)"
+										class="edited-badge"
+									>
+										<v-icon name="edit" small />
+									</div>
+									<v-chip :class="`status-${item.output_status}`" small>
+										{{ item.output_status }}
+									</v-chip>
+								</div>
+							</td>
+							<!-- Sticky Actions cell -->
+							<td class="sticky-cell actions-cell-td">
+								<div class="action-buttons">
+									<v-button
+										small
+										icon
+										:secondary="item.output_status !== 'approved'"
+										@click.stop="emit('approve', [item.id])"
+										:disabled="!permissions.edit"
+										:class="{ 'active-approve': item.output_status === 'approved' }"
+									>
+										<v-icon name="check" />
+									</v-button>
+									<v-button
+										small
+										icon
+										:secondary="item.output_status !== 'rejected'"
+										@click.stop="emit('reject', [item.id])"
+										:disabled="!permissions.edit"
+										:class="{ 'active-reject': item.output_status === 'rejected' }"
+									>
+										<v-icon name="close" />
+									</v-button>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 
 		<!-- Empty state -->
 		<div v-else class="empty-state">
@@ -86,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, reactive, watch, onMounted, onUnmounted } from 'vue';
 import EditableCell from '../components/EditableCell.vue';
 
 const props = defineProps({
@@ -114,12 +139,6 @@ const props = defineProps({
 
 const emit = defineEmits(['approve', 'reject', 'delete', 'edit', 'update:selected']);
 
-// v-model for v-table selection
-const selectedItems = computed({
-	get: () => props.selected,
-	set: (value) => emit('update:selected', value)
-});
-
 // Format field names for headers
 const formatFieldName = (field) => {
 	return field
@@ -127,96 +146,76 @@ const formatFieldName = (field) => {
 		.replace(/\b\w/g, c => c.toUpperCase());
 };
 
-// Build table headers with intelligent column widths
-const tableHeaders = computed(() => {
-	const headers = [];
+// Calculate initial column width based on field type
+const getInitialColumnWidth = (field) => {
+	const fieldCount = props.fields?.length || 1;
 
-	// Only show fields explicitly passed by user (no fallback, no filtering)
-	const fieldsToShow = props.fields || [];
-	const fieldCount = fieldsToShow.length;
+	// Short fields get smaller widths
+	const shortFields = ['id', 'status'];
+	if (shortFields.includes(field)) return 100;
 
-	// Calculate appropriate column width based on number of fields
-	// More columns = smaller minimum widths, but always readable
-	const getColumnWidth = (field) => {
-		// Short fields get smaller widths
-		const shortFields = ['id', 'status', 'output_status'];
-		if (shortFields.includes(field)) return 80;
+	// Date fields need medium width
+	if (field.includes('date') || field.includes('_at')) return 180;
 
-		// Date fields need medium width
-		if (field.includes('date') || field.includes('_at')) return 140;
+	// UUID/ID fields need more space
+	if (field === 'image' || field.includes('_id')) return 200;
 
-		// UUID/ID fields need more space
-		if (field === 'image' || field.includes('_id')) return 160;
-
-		// Dynamic width based on total column count
-		if (fieldCount <= 3) return 200; // Few columns - wider
-		if (fieldCount <= 5) return 160; // Medium - balanced
-		return 140; // Many columns - compact but readable
-	};
-
-	// Add data field headers with calculated widths
-	fieldsToShow.forEach(field => {
-		headers.push({
-			text: formatFieldName(field),
-			value: field,
-			width: getColumnWidth(field),
-			sortable: false
-		});
-	});
-
-	// Add status column
-	headers.push({
-		text: 'Status',
-		value: 'output_status',
-		width: 130,
-		sortable: false,
-		align: 'right'
-	});
-
-	// Add actions column (wider for two inline buttons)
-	headers.push({
-		text: 'Actions',
-		value: 'actions',
-		width: 100,
-		sortable: false,
-		align: 'right'
-	});
-
-	return headers;
-});
-
-// Generate dynamic grid template based on calculated header widths
-const gridTemplate = computed(() => {
-	const headers = tableHeaders.value;
-	if (headers.length === 0) return '130px 100px';
-
-	const fieldCount = props.fields?.length || 0;
-
-	// For few columns (≤3 content fields), use flexible widths so columns stretch
-	// Status (130px) and Actions (100px) stay fixed, content columns flex
-	if (fieldCount <= 3) {
-		const colWidths = headers.map(h => {
-			// Keep status and actions fixed
-			if (h.value === 'output_status') return '130px';
-			if (h.value === 'actions') return '100px';
-			// Content columns get flexible width with minimum
-			return `minmax(${h.width}px, 1fr)`;
-		});
-		return colWidths.join(' ');
-	}
-
-	// For many columns, use fixed widths to ensure readability
-	const colWidths = headers.map(h => `${h.width}px`);
-	return colWidths.join(' ');
-});
-
-const handleRowClick = ({ item }) => {
-	// Toggle selection on row click
-	const newSelected = props.selected.includes(item.id)
-		? props.selected.filter(id => id !== item.id)
-		: [...props.selected, item.id];
-	emit('update:selected', newSelected);
+	// Dynamic width based on total column count
+	if (fieldCount <= 2) return 300; // Few columns - wider
+	if (fieldCount <= 4) return 220; // Medium - balanced
+	return 180; // Many columns - compact but readable
 };
+
+// Reactive column widths - initialize with computed widths
+const columnWidths = reactive({});
+
+// Initialize column widths when fields change
+watch(() => props.fields, (newFields) => {
+	if (newFields) {
+		newFields.forEach(field => {
+			if (!(field in columnWidths)) {
+				columnWidths[field] = getInitialColumnWidth(field);
+			}
+		});
+	}
+}, { immediate: true });
+
+// Column resize functionality
+const resizing = ref(null); // { field, startX, startWidth }
+
+const startResize = (event, field) => {
+	event.preventDefault();
+	resizing.value = {
+		field,
+		startX: event.clientX,
+		startWidth: columnWidths[field] || 150
+	};
+	document.addEventListener('mousemove', handleResize);
+	document.addEventListener('mouseup', stopResize);
+	document.body.style.cursor = 'col-resize';
+	document.body.style.userSelect = 'none';
+};
+
+const handleResize = (event) => {
+	if (!resizing.value) return;
+	const diff = event.clientX - resizing.value.startX;
+	const newWidth = Math.max(80, resizing.value.startWidth + diff); // Minimum 80px
+	columnWidths[resizing.value.field] = newWidth;
+};
+
+const stopResize = () => {
+	resizing.value = null;
+	document.removeEventListener('mousemove', handleResize);
+	document.removeEventListener('mouseup', stopResize);
+	document.body.style.cursor = '';
+	document.body.style.userSelect = '';
+};
+
+// Cleanup on unmount
+onUnmounted(() => {
+	document.removeEventListener('mousemove', handleResize);
+	document.removeEventListener('mouseup', stopResize);
+});
 
 // Handle cell edits - emit to parent
 const handleCellUpdate = (itemId, field, newValue) => {
@@ -227,88 +226,171 @@ const handleCellUpdate = (itemId, field, newValue) => {
 <style scoped>
 .table-layout {
 	width: 100%;
+	height: calc(100vh - 200px); /* Fill available height */
 	min-height: 400px;
+	display: flex;
+	flex-direction: column;
 }
 
-/* Full-width table with flexible columns */
-:deep(.v-table) {
+/* Custom table container - full width with horizontal scroll for content */
+.custom-table-container {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border: 1px solid var(--border-subdued);
+	border-radius: var(--border-radius);
+	background: var(--background-page);
+}
+
+.table-wrapper {
+	flex: 1;
+	overflow: auto;
+	position: relative;
+}
+
+/* Custom table styles */
+.custom-table {
 	width: 100%;
-	max-width: 100%;
-	max-height: 70vh; /* Scrollable table with sticky headers */
-	overflow: auto; /* Allow both horizontal and vertical scrolling */
+	border-collapse: separate;
+	border-spacing: 0;
+	table-layout: fixed;
 }
 
-/* Ensure table can expand beyond container when many columns */
-:deep(.v-table table) {
-	min-width: 100%;
+/* Header styles */
+.custom-table thead {
+	position: sticky;
+	top: 0;
+	z-index: 20;
 }
 
-/* Override v-table's CSS Grid column widths - force content columns to use flexible sizing */
-/* v-table uses CSS Grid with custom properties instead of traditional table layout */
-:deep(.v-table),
-:deep(.v-table table),
-:deep(.v-table tbody) {
-	/* Use dynamic grid template based on number of fields passed */
-	--b7a37058: var(--dynamic-grid-template) !important;
-	--401415c8: var(--dynamic-grid-template) !important;
+.custom-table th {
+	background: var(--background-subdued);
+	padding: 12px 16px;
+	text-align: left;
+	font-weight: 600;
+	font-size: 13px;
+	color: var(--foreground-normal);
+	border-bottom: 2px solid var(--border-normal);
+	white-space: nowrap;
 }
 
-:deep(.v-table table) {
-	width: 100%;
-	max-width: 100%;
-	table-layout: fixed; /* Force full width, distribute space evenly among columns */
+/* Content column headers - resizable */
+.content-header {
+	position: relative;
+	padding-right: 16px; /* Space for resize handle */
 }
 
-/* Content columns - word wrap for long content */
-:deep(.v-table td) {
+.header-text {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Resize handle - positioned at right edge of header */
+.resize-handle {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 16px;
+	height: 100%;
+	cursor: col-resize;
+	background: transparent;
+	z-index: 10;
+}
+
+/* Visible resize indicator line */
+.resize-handle::before {
+	content: '';
+	position: absolute;
+	top: 20%;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 3px;
+	height: 60%;
+	background: var(--border-subdued);
+	border-radius: 2px;
+	transition: background 0.15s ease;
+}
+
+.resize-handle:hover::before {
+	background: var(--primary);
+}
+
+/* Show resize cursor across whole column edge area */
+.content-header:hover .resize-handle::before {
+	background: var(--border-normal);
+}
+
+/* Sticky columns (Status & Actions) - pinned to right */
+.sticky-header,
+.sticky-cell {
+	position: sticky;
+	right: 0;
+	background: var(--background-subdued);
+	z-index: 10;
+}
+
+.sticky-cell {
+	background: var(--background-page);
+}
+
+/* Status header/cell positioning */
+.status-header,
+.status-cell-td {
+	right: 100px; /* Width of actions column */
+	width: 130px;
+	min-width: 130px;
+	text-align: right;
+	border-left: 1px solid var(--border-subdued);
+}
+
+/* Actions header/cell positioning */
+.actions-header,
+.actions-cell-td {
+	right: 0;
+	width: 100px;
+	min-width: 100px;
+	text-align: center;
+}
+
+/* Shadow to indicate sticky columns */
+.status-header::before,
+.status-cell-td::before {
+	content: '';
+	position: absolute;
+	left: -10px;
+	top: 0;
+	bottom: 0;
+	width: 10px;
+	background: linear-gradient(to right, transparent, rgba(0,0,0,0.05));
+	pointer-events: none;
+}
+
+/* Body cell styles */
+.custom-table td {
+	padding: 12px 16px;
+	vertical-align: top;
+	border-bottom: 1px solid var(--border-subdued);
+	color: var(--foreground-normal);
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+/* Content cells - allow text wrapping */
+.content-cell {
 	word-wrap: break-word;
 	overflow-wrap: break-word;
+	white-space: normal;
 }
 
-/* Override Directus v-table's default text truncation for review/approval workflow */
-/* Users need to scan content to make decisions, not just navigate */
-:deep(.v-table tbody .cell:not(.select):not(.drag)) {
-	white-space: normal !important;
-	text-overflow: clip !important;
-	overflow: visible !important;
+/* Row hover effect */
+.custom-table tbody tr:hover td {
+	background: var(--background-highlight);
 }
 
-/* Allow cell children to wrap and display full text */
-:deep(.v-table tbody .cell:not(.select):not(.drag) > *:not(.status-cell):not(.action-buttons)) {
-	white-space: normal !important;
-	text-overflow: clip !important;
-	overflow: visible !important;
-	word-wrap: break-word;
-	overflow-wrap: break-word;
-	display: block !important;
-}
-
-/* Ensure rows can expand vertically to fit content */
-:deep(.v-table tbody tr) {
-	height: auto !important;
-	min-height: 48px;
-}
-
-/* Align content to top when rows are tall, with padding for readability */
-:deep(.v-table tbody td) {
-	vertical-align: top !important;
-	padding-top: 12px !important;
-	padding-bottom: 12px !important;
-}
-
-/* Ensure cell content divs are also top-aligned */
-:deep(.v-table tbody .cell) {
-	align-items: flex-start !important;
-}
-
-/* Top-align any nested content wrappers */
-:deep(.v-table tbody .cell > *) {
-	vertical-align: top !important;
-}
-
-/* Also top-align header cells for consistency */
-:deep(.v-table thead th) {
-	vertical-align: top !important;
+.custom-table tbody tr:hover .sticky-cell {
+	background: var(--background-highlight);
 }
 
 /* Loading skeleton styles */
@@ -376,17 +458,15 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	--v-chip-color: var(--primary-alt);
 }
 
-/* Status cell with edited icon - target through :deep to override v-table */
-:deep(.v-table .status-cell) {
-	display: flex !important;
-	flex-direction: row !important;
-	flex-wrap: nowrap !important;
-	align-items: center !important;
+/* Status cell layout */
+.status-cell {
+	display: flex;
+	align-items: center;
 	gap: 6px;
-	justify-content: flex-end !important;
+	justify-content: flex-end;
 }
 
-:deep(.v-table .edited-badge) {
+.edited-badge {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -398,37 +478,18 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	flex-shrink: 0;
 }
 
-/* Right-align Status and Actions columns */
-:deep(.v-table td[data-column="output_status"]) {
-	text-align: right !important;
-}
-
-:deep(.v-table td[data-column="actions"]) {
-	text-align: right !important;
-}
-
-/* Override v-table cell flex direction for status column */
-:deep(.v-table td[data-column="output_status"] .cell) {
-	justify-content: flex-end !important;
-	flex-direction: row !important;
-}
-
-/* Action buttons layout - needs to be within v-table scope */
-:deep(.v-table .action-buttons) {
+/* Action buttons layout */
+.action-buttons {
 	display: flex;
-	justify-content: flex-end !important;
+	justify-content: center;
 	align-items: center;
+	gap: 4px;
 }
 
 .action-buttons :deep(.v-button) {
 	min-width: 32px;
 	height: 32px;
 	transition: all 0.2s ease;
-}
-
-/* Use margin instead of gap for reliability */
-.action-buttons :deep(.v-button:not(:last-child)) {
-	margin-right: 8px;
 }
 
 /* Outlined/inactive state (secondary buttons) */
