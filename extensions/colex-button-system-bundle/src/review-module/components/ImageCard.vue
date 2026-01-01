@@ -1,15 +1,7 @@
 <template>
 	<div class="image-card" :class="cardClasses">
-		<div class="checkbox-overlay">
-			<v-checkbox :model-value="selected" @update:model-value="$emit('toggle-select')" />
-		</div>
-
-		<div class="image-container" @click="toggleReject">
-			<img v-if="imageUrl" :src="imageUrl" :alt="item.name || 'Output image'" />
-			<div v-else class="no-image">
-				<v-icon name="image" large />
-				<span>No Image</span>
-			</div>
+		<div v-if="imageUrl" class="image-container" @click="toggleReject">
+			<img :src="imageUrl" :alt="item.name || 'Output image'" />
 			<div class="status-badges">
 				<div v-if="isEdited" class="status-badge status-edited">
 					<v-icon name="edit" small />
@@ -17,6 +9,16 @@
 				<div v-if="item.output_status" class="status-badge" :class="`status-${item.output_status}`">
 					{{ item.output_status }}
 				</div>
+			</div>
+		</div>
+
+		<!-- Status badge when no image - show inline with content -->
+		<div v-else class="status-header">
+			<div v-if="isEdited" class="status-badge status-edited">
+				<v-icon name="edit" small />
+			</div>
+			<div v-if="item.output_status" class="status-badge" :class="`status-${item.output_status}`">
+				{{ item.output_status }}
 			</div>
 		</div>
 
@@ -107,14 +109,10 @@ const props = defineProps({
 	permissions: {
 		type: Object,
 		default: () => ({ edit: true, delete: false })
-	},
-	selected: {
-		type: Boolean,
-		default: false
 	}
 });
 
-const emit = defineEmits(['approve', 'reject', 'delete', 'edit', 'toggle-select']);
+const emit = defineEmits(['approve', 'reject', 'delete', 'edit']);
 
 // Edit mode state
 const isEditMode = ref(false);
@@ -203,7 +201,6 @@ const isEdited = computed(() => {
 });
 
 const cardClasses = computed(() => ({
-	selected: props.selected,
 	approved: isApproved.value,
 	rejected: isRejected.value,
 	editing: isEditMode.value
@@ -255,11 +252,6 @@ const openImage = () => {
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.image-card.selected {
-	border-color: var(--primary);
-	box-shadow: 0 0 0 2px var(--primary-alt);
-}
-
 .image-card.approved {
 	border-color: var(--success);
 }
@@ -268,14 +260,11 @@ const openImage = () => {
 	opacity: 0.7;
 }
 
-.checkbox-overlay {
-	position: absolute;
-	top: 8px;
-	left: 8px;
-	z-index: 2;
-	background: var(--background-page);
-	border-radius: 4px;
-	padding: 4px;
+.status-header {
+	display: flex;
+	gap: 4px;
+	padding: 12px 12px 0;
+	justify-content: flex-end;
 }
 
 .image-container {
@@ -302,13 +291,6 @@ const openImage = () => {
 	opacity: 0.4;
 }
 
-.no-image {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 8px;
-	color: var(--foreground-subdued);
-}
 
 .status-badges {
 	position: absolute;
