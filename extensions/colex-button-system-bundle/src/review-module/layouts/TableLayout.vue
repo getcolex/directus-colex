@@ -9,91 +9,94 @@
 			/>
 		</div>
 
-		<!-- Custom table with sticky columns and resizable headers -->
-		<div v-else-if="items.length > 0" class="custom-table-container">
-			<div class="table-wrapper">
-				<table class="custom-table">
-					<!-- Header row -->
-					<thead>
-						<tr>
-							<!-- Content column headers (resizable) -->
-							<th
-								v-for="(field, index) in fields"
-								:key="field"
-								class="content-header"
-								:style="{ width: columnWidths[field] + 'px', minWidth: '80px' }"
-							>
-								<span class="header-text">{{ formatFieldName(field) }}</span>
+		<!-- Flexbox-based table with fixed right columns -->
+		<div v-else-if="items.length > 0" class="table-container">
+			<!-- Header wrapper - syncs scroll with body -->
+			<div class="header-wrapper" ref="headerWrapperRef">
+				<div class="table-header">
+					<!-- Content headers -->
+					<div class="content-columns">
+						<div
+							v-for="(field, index) in fields"
+							:key="field"
+							class="content-header"
+							:style="{ width: columnWidths[field] + 'px', minWidth: '80px' }"
+						>
+							<span class="header-text">{{ formatFieldName(field) }}</span>
+							<div
+								class="resize-handle"
+								@mousedown.prevent.stop="(e) => startResize(e, field)"
+							></div>
+						</div>
+					</div>
+					<!-- Fixed headers (Status & Actions) -->
+					<div class="fixed-columns fixed-columns-header">
+						<div class="fixed-header status-header">Status</div>
+						<div class="fixed-header actions-header">Actions</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Body rows -->
+			<div class="table-body" ref="bodyScrollRef" @scroll="syncScroll">
+				<div v-for="item in items" :key="item.id" class="table-row">
+					<!-- Content cells -->
+					<div class="content-columns">
+						<div
+							v-for="field in fields"
+							:key="field"
+							class="content-cell"
+							:style="{ width: columnWidths[field] + 'px', minWidth: '80px' }"
+						>
+							<EditableCell
+								:value="item[field]"
+								:field-name="field"
+								:editable="permissions.edit"
+								@update="(newValue) => handleCellUpdate(item.id, field, newValue)"
+							/>
+						</div>
+					</div>
+					<!-- Fixed cells (Status & Actions) -->
+					<div class="fixed-columns">
+						<div class="fixed-cell status-cell">
+							<div class="status-content">
 								<div
-									class="resize-handle"
-									@mousedown.prevent.stop="(e) => startResize(e, field)"
-								></div>
-							</th>
-							<!-- Sticky Status header -->
-							<th class="sticky-header status-header" style="background-color: #F8F7F4;">Status</th>
-							<!-- Sticky Actions header -->
-							<th class="sticky-header actions-header" style="background-color: #F8F7F4;">Actions</th>
-						</tr>
-					</thead>
-					<!-- Body rows -->
-					<tbody>
-						<tr v-for="item in items" :key="item.id">
-							<!-- Content cells -->
-							<td
-								v-for="field in fields"
-								:key="field"
-								class="content-cell"
-								:style="{ width: columnWidths[field] + 'px', minWidth: '80px' }"
-							>
-								<EditableCell
-									:value="item[field]"
-									:field-name="field"
-									:editable="permissions.edit"
-									@update="(newValue) => handleCellUpdate(item.id, field, newValue)"
-								/>
-							</td>
-							<!-- Sticky Status cell -->
-							<td class="sticky-cell status-cell-td" style="background-color: #F8F7F4;">
-								<div class="status-cell">
-									<div
-										v-if="item.date_updated && item.date_created && new Date(item.date_updated) > new Date(item.date_created)"
-										class="edited-badge"
-									>
-										<v-icon name="edit" small />
-									</div>
-									<v-chip :class="`status-${item.output_status}`" small>
-										{{ item.output_status }}
-									</v-chip>
+									v-if="item.date_updated && item.date_created && new Date(item.date_updated) > new Date(item.date_created)"
+									class="edited-badge"
+								>
+									<v-icon name="edit" small />
 								</div>
-							</td>
-							<!-- Sticky Actions cell -->
-							<td class="sticky-cell actions-cell-td" style="background-color: #F8F7F4;">
-								<div class="action-buttons">
-									<v-button
-										small
-										icon
-										:secondary="item.output_status !== 'approved'"
-										@click.stop="emit('approve', [item.id])"
-										:disabled="!permissions.edit"
-										:class="{ 'active-approve': item.output_status === 'approved' }"
-									>
-										<v-icon name="check" />
-									</v-button>
-									<v-button
-										small
-										icon
-										:secondary="item.output_status !== 'rejected'"
-										@click.stop="emit('reject', [item.id])"
-										:disabled="!permissions.edit"
-										:class="{ 'active-reject': item.output_status === 'rejected' }"
-									>
-										<v-icon name="close" />
-									</v-button>
-								</div>
-							</td>
-						</tr>
-					</tbody>
-				</table>
+								<v-chip :class="`status-${item.output_status}`" small>
+									{{ item.output_status }}
+								</v-chip>
+							</div>
+						</div>
+						<div class="fixed-cell actions-cell">
+							<div class="action-buttons">
+								<v-button
+									small
+									icon
+									:secondary="item.output_status !== 'approved'"
+									@click.stop="emit('approve', [item.id])"
+									:disabled="!permissions.edit"
+									:class="{ 'active-approve': item.output_status === 'approved' }"
+								>
+									<v-icon name="check" />
+								</v-button>
+								<v-button
+									small
+									icon
+									:secondary="item.output_status !== 'rejected'"
+									@click.stop="emit('reject', [item.id])"
+									:disabled="!permissions.edit"
+									:class="{ 'active-reject': item.output_status === 'rejected' }"
+								>
+									<v-icon name="close" />
+								</v-button>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 
@@ -142,6 +145,17 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['approve', 'reject', 'delete', 'edit', 'update:selected']);
+
+// Refs for scroll sync
+const headerWrapperRef = ref(null);
+const bodyScrollRef = ref(null);
+
+// Sync horizontal scroll between header and body
+const syncScroll = (e) => {
+	if (headerWrapperRef.value) {
+		headerWrapperRef.value.scrollLeft = e.target.scrollLeft;
+	}
+};
 
 // Format field names for headers
 const formatFieldName = (field) => {
@@ -265,14 +279,14 @@ const handleCellUpdate = (itemId, field, newValue) => {
 <style scoped>
 .table-layout {
 	width: 100%;
-	height: calc(100vh - 200px); /* Fill available height */
+	height: calc(100vh - 200px);
 	min-height: 400px;
 	display: flex;
 	flex-direction: column;
 }
 
-/* Custom table container - full width with horizontal scroll for content */
-.custom-table-container {
+/* Main table container */
+.table-container {
 	flex: 1;
 	display: flex;
 	flex-direction: column;
@@ -282,45 +296,81 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	background: var(--background-page);
 }
 
-.table-wrapper {
+/* Header wrapper - handles horizontal scroll sync */
+.header-wrapper {
+	flex-shrink: 0;
+	overflow-x: hidden; /* Hide scrollbar, sync'd via JS */
+	border-bottom: 2px solid var(--border-normal);
+	background: var(--background-subdued);
+}
+
+/* Header row */
+.table-header {
+	display: flex;
+	min-width: fit-content; /* Expand to fit content */
+}
+
+/* Body container - scrollable both directions */
+.table-body {
 	flex: 1;
 	overflow: auto;
-	position: relative;
-	/* Force GPU acceleration for better layer handling */
-	transform: translateZ(0);
-	will-change: transform;
 }
 
-/* Custom table styles */
-.custom-table {
-	width: 100%;
-	border-collapse: separate;
-	border-spacing: 0;
-	table-layout: fixed;
+/* Each data row - must be wide enough for content + fixed columns */
+.table-row {
+	display: flex;
+	border-bottom: 1px solid var(--border-subdued);
+	min-width: fit-content; /* Row expands to fit all content */
 }
 
-/* Header styles */
-.custom-table thead {
+.table-row:hover {
+	background-color: #F0EFEC;
+}
+
+/* Content columns container */
+.content-columns {
+	display: flex;
+	flex-shrink: 0; /* Don't shrink - allow overflow for scroll */
+}
+
+/* Header content columns need same styling */
+.table-header .content-columns {
+	display: flex;
+	flex-shrink: 0;
+}
+
+/* Fixed columns container - never shrinks or grows */
+.fixed-columns {
+	display: flex;
+	flex: 0 0 260px; /* 160px Status + 100px Actions */
+	border-left: 1px solid var(--border-subdued);
+	background-color: #F8F7F4;
+}
+
+/* Fixed columns need sticky positioning to stay visible during scroll */
+.fixed-columns {
 	position: sticky;
-	top: 0;
-	z-index: 20;
+	right: 0;
+	z-index: 10;
 }
 
-.custom-table th {
-	background: var(--background-subdued);
+/* Ensure fixed columns stay visible */
+.table-row:hover .fixed-columns {
+	background-color: #F0EFEC;
+}
+
+/* Content header cells */
+.content-header {
+	position: relative;
+	flex-shrink: 0;
 	padding: 12px 16px;
-	text-align: left;
+	padding-right: 24px; /* Space for resize handle */
 	font-weight: 600;
 	font-size: 13px;
 	color: var(--foreground-normal);
-	border-bottom: 2px solid var(--border-normal);
 	white-space: nowrap;
-}
-
-/* Content column headers - resizable */
-.content-header {
-	position: relative;
-	padding-right: 16px; /* Space for resize handle */
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .header-text {
@@ -329,7 +379,7 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	text-overflow: ellipsis;
 }
 
-/* Resize handle - positioned at right edge of header */
+/* Resize handle */
 .resize-handle {
 	position: absolute;
 	top: 0;
@@ -341,7 +391,6 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	z-index: 10;
 }
 
-/* Visible resize indicator line - subtle gray line */
 .resize-handle::before {
 	content: '';
 	position: absolute;
@@ -353,100 +402,160 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	transition: background 0.15s ease;
 }
 
-/* Darker on hover */
 .resize-handle:hover::before,
 .content-header:hover .resize-handle::before {
 	background: var(--foreground-subdued, #a2b5cd);
 }
 
-/* Sticky columns (Status & Actions) - pinned to right with solid backgrounds */
-.sticky-header,
-.sticky-cell {
-	position: sticky;
-	right: 0;
-	z-index: 100;
-	background-color: #F8F7F4 !important;
-}
-
-/* Content cells - clip overflow so text doesn't extend past cell bounds */
-.content-header,
+/* Content cells */
 .content-cell {
-	position: relative;
-	z-index: 1;
-	overflow: hidden;
-	/* Force paint containment to clip content properly */
-	contain: paint;
-}
-
-/* Status header/cell positioning */
-.status-header {
-	right: 100px; /* Width of actions column */
-	width: 160px;
-	min-width: 160px;
-	text-align: center;
-	border-left: 1px solid var(--border-subdued);
-}
-
-.status-cell-td {
-	right: 100px; /* Width of actions column */
-	width: 160px;
-	min-width: 160px;
-	text-align: center;
-	border-left: 1px solid var(--border-subdued);
-	padding-left: 16px !important;
-	padding-right: 8px !important;
-}
-
-/* Actions header/cell positioning */
-.actions-header,
-.actions-cell-td {
-	right: 0;
-	width: 100px;
-	min-width: 100px;
-	text-align: center;
-}
-
-/* Shadow to indicate sticky columns */
-.status-header::before,
-.status-cell-td::before {
-	content: '';
-	position: absolute;
-	left: -10px;
-	top: 0;
-	bottom: 0;
-	width: 10px;
-	background: linear-gradient(to right, transparent, rgba(0,0,0,0.05));
-	pointer-events: none;
-}
-
-/* Body cell styles */
-.custom-table td {
+	flex-shrink: 0;
 	padding: 12px 16px;
-	vertical-align: top;
-	border-bottom: 1px solid var(--border-subdued);
-	color: var(--foreground-normal);
 	font-size: 14px;
 	line-height: 1.5;
-}
-
-/* Content cells - allow text wrapping */
-.content-cell {
+	color: var(--foreground-normal);
 	word-wrap: break-word;
 	overflow-wrap: break-word;
-	white-space: normal;
+	overflow: hidden;
 }
 
-/* Row hover effect */
-.custom-table tbody tr:hover td {
-	background-color: #F0EFEC !important;
+/* Fixed header cells */
+.fixed-header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12px 16px;
+	font-weight: 600;
+	font-size: 13px;
+	color: var(--foreground-normal);
+	white-space: nowrap;
+	background-color: #F8F7F4;
 }
 
-/* Ensure sticky cells maintain solid background on hover */
-.custom-table tbody tr:hover .sticky-cell {
-	background-color: #F0EFEC !important; /* Slightly darker than #F8F7F4 for hover */
+.status-header {
+	width: 160px;
+	min-width: 160px;
+	max-width: 160px;
 }
 
-/* Loading skeleton styles */
+.actions-header {
+	width: 100px;
+	min-width: 100px;
+	max-width: 100px;
+}
+
+/* Fixed body cells */
+.fixed-cell {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 12px 8px;
+}
+
+.status-cell {
+	width: 160px;
+	min-width: 160px;
+	max-width: 160px;
+}
+
+.actions-cell {
+	width: 100px;
+	min-width: 100px;
+	max-width: 100px;
+}
+
+/* Status content layout */
+.status-content {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	justify-content: flex-end;
+	width: 100%;
+}
+
+.edited-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--primary);
+	border-radius: 4px;
+	padding: 0 6px;
+	height: 24px;
+	color: white;
+	flex-shrink: 0;
+}
+
+/* Action buttons */
+.action-buttons {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 4px;
+}
+
+.action-buttons :deep(.v-button) {
+	min-width: 32px;
+	height: 32px;
+	transition: all 0.2s ease;
+}
+
+.action-buttons :deep(.v-button[secondary]) {
+	--v-button-background-color: transparent;
+	--v-button-background-color-hover: var(--background-normal);
+	--v-button-color: var(--foreground-subdued);
+	--v-button-color-hover: var(--foreground-normal);
+	border: 1px solid var(--border-normal);
+}
+
+.action-buttons :deep(.v-button.active-approve) {
+	--v-button-background-color: var(--success);
+	--v-button-background-color-hover: var(--success-125);
+	--v-button-color: white;
+	border: none;
+}
+
+.action-buttons :deep(.v-button.active-reject) {
+	--v-button-background-color: var(--danger);
+	--v-button-background-color-hover: var(--danger-125);
+	--v-button-color: white;
+	border: none;
+}
+
+.action-buttons :deep(.v-button:hover:not(:disabled)) {
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons :deep(.v-button:disabled) {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+/* Status chip styles */
+:deep(.status-approved),
+:deep(.status-rejected),
+:deep(.status-pending) {
+	min-width: 80px;
+	justify-content: center;
+	text-align: center;
+}
+
+:deep(.status-approved) {
+	--v-chip-background-color: var(--success);
+	--v-chip-color: white;
+}
+
+:deep(.status-rejected) {
+	--v-chip-background-color: var(--danger);
+	--v-chip-color: white;
+}
+
+:deep(.status-pending) {
+	--v-chip-background-color: var(--primary);
+	--v-chip-color: var(--primary-alt);
+}
+
+/* Loading skeleton */
 .skeleton-container {
 	padding: 20px;
 	display: flex;
@@ -493,101 +602,5 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	margin: 0;
 	font-size: 14px;
 	color: var(--foreground-subdued);
-}
-
-/* Status chip styles - uniform width for all status types */
-:deep(.status-approved),
-:deep(.status-rejected),
-:deep(.status-pending) {
-	min-width: 80px;
-	justify-content: center;
-	text-align: center;
-}
-
-:deep(.status-approved) {
-	--v-chip-background-color: var(--success);
-	--v-chip-color: white;
-}
-
-:deep(.status-rejected) {
-	--v-chip-background-color: var(--danger);
-	--v-chip-color: white;
-}
-
-:deep(.status-pending) {
-	--v-chip-background-color: var(--primary);
-	--v-chip-color: var(--primary-alt);
-}
-
-/* Status cell layout */
-.status-cell {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	justify-content: flex-end;
-	padding: 4px 8px;
-}
-
-.edited-badge {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--primary);
-	border-radius: 4px;
-	padding: 0 6px;
-	height: 24px;
-	color: white;
-	flex-shrink: 0;
-}
-
-/* Action buttons layout */
-.action-buttons {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	gap: 4px;
-}
-
-.action-buttons :deep(.v-button) {
-	min-width: 32px;
-	height: 32px;
-	transition: all 0.2s ease;
-}
-
-/* Outlined/inactive state (secondary buttons) */
-.action-buttons :deep(.v-button[secondary]) {
-	--v-button-background-color: transparent;
-	--v-button-background-color-hover: var(--background-normal);
-	--v-button-color: var(--foreground-subdued);
-	--v-button-color-hover: var(--foreground-normal);
-	border: 1px solid var(--border-normal);
-}
-
-/* Active approve button - filled green */
-.action-buttons :deep(.v-button.active-approve) {
-	--v-button-background-color: var(--success);
-	--v-button-background-color-hover: var(--success-125);
-	--v-button-color: white;
-	border: none;
-}
-
-/* Active reject button - filled red */
-.action-buttons :deep(.v-button.active-reject) {
-	--v-button-background-color: var(--danger);
-	--v-button-background-color-hover: var(--danger-125);
-	--v-button-color: white;
-	border: none;
-}
-
-/* Hover effect */
-.action-buttons :deep(.v-button:hover:not(:disabled)) {
-	transform: translateY(-1px);
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Disabled state */
-.action-buttons :deep(.v-button:disabled) {
-	opacity: 0.4;
-	cursor: not-allowed;
 }
 </style>
