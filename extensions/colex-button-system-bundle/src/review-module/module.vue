@@ -54,6 +54,7 @@
 				:fields="fields"
 				:permissions="permissions"
 				:loading="loading"
+				:collection="collection"
 				v-model:selected="selected"
 				@approve="handleApprove"
 				@reject="handleReject"
@@ -347,8 +348,8 @@ onMounted(() => {
 }
 
 .done-btn {
-	--v-button-background-color: var(--success) !important;
-	--v-button-background-color-hover: var(--success-125) !important;
+	--v-button-background-color: #1A1A1A !important;
+	--v-button-background-color-hover: #2D2D2D !important;
 	--v-button-color: #FFFFFF !important;
 	--v-button-color-hover: #FFFFFF !important;
 	flex-shrink: 0;
