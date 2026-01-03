@@ -61,7 +61,7 @@
 						<div class="fixed-cell status-cell">
 							<div class="status-content">
 								<div
-									v-if="item.date_updated && item.date_created && new Date(item.date_updated) > new Date(item.date_created)"
+									v-if="isEdited(item)"
 									class="edited-badge"
 								>
 									<v-icon name="edit" small />
@@ -274,6 +274,29 @@ onUnmounted(() => {
 const handleCellUpdate = (itemId, field, newValue) => {
 	emit('edit', itemId, { [field]: newValue });
 };
+
+// Check if item was content-edited (not just status-changed)
+const isEdited = (item) => {
+	if (!item.date_updated) return false;
+
+	const updated = new Date(item.date_updated).getTime();
+
+	// For reviewed items: was content edited after the review?
+	if (item.reviewed_at) {
+		const reviewed = new Date(item.reviewed_at).getTime();
+		// 2 second buffer for near-simultaneous operations
+		return (updated - reviewed) > 2000;
+	}
+
+	// For pending items (never reviewed): was it edited after creation?
+	if (item.date_created) {
+		const created = new Date(item.date_created).getTime();
+		// 5 second buffer for creation variance
+		return (updated - created) > 5000;
+	}
+
+	return false;
+};
 </script>
 
 <style scoped>
@@ -477,11 +500,11 @@ const handleCellUpdate = (itemId, field, newValue) => {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	background: var(--primary);
+	background: var(--foreground-subdued);
 	border-radius: 4px;
 	padding: 0 6px;
 	height: 24px;
-	color: white;
+	color: var(--background-page);
 	flex-shrink: 0;
 }
 

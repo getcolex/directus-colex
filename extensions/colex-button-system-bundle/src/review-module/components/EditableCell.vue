@@ -4,12 +4,17 @@
 		class="editable-cell"
 		:class="{
 			'is-editing': isEditing,
-			'is-editable': editable,
+			'is-editable': editable && !isImageField,
 			'has-changes': hasChanges
 		}"
 	>
+		<!-- Image Display Mode -->
+		<div v-if="isImageField && value" class="cell-display cell-image">
+			<img :src="imageUrl" :alt="fieldName" class="cell-image-preview" />
+		</div>
+
 		<!-- Display Mode - click anywhere on cell to edit -->
-		<div v-if="!isEditing" class="cell-display" @click.stop="startEdit">
+		<div v-else-if="!isEditing" class="cell-display" @click.stop="startEdit">
 			<span class="cell-value">{{ displayValue }}</span>
 		</div>
 
@@ -68,6 +73,20 @@ watch(() => props.value, (newVal) => {
 // Computed
 const hasChanges = computed(() => {
 	return localValue.value !== originalValue.value;
+});
+
+// Detect if this is an image field based on field name
+const imageFieldNames = ['image', 'thumbnail', 'photo', 'picture', 'avatar', 'cover', 'banner', 'logo', 'icon'];
+const isImageField = computed(() => {
+	const fieldLower = props.fieldName.toLowerCase();
+	return imageFieldNames.some(name => fieldLower.includes(name));
+});
+
+// Generate Directus asset URL for images
+const imageUrl = computed(() => {
+	if (!props.value) return '';
+	// Value is a UUID, construct the Directus asset URL
+	return `/assets/${props.value}?width=200&height=200&fit=cover`;
 });
 
 const displayValue = computed(() => {
@@ -201,5 +220,21 @@ function cancelEdit() {
 .editable-cell.is-editing {
 	background: var(--background-subdued);
 	border-radius: var(--border-radius);
+}
+
+/* Image cell styles */
+.cell-image {
+	justify-content: flex-start;
+	align-items: flex-start;
+}
+
+.cell-image-preview {
+	max-width: 100%;
+	max-height: 120px;
+	width: auto;
+	height: auto;
+	object-fit: cover;
+	border-radius: var(--border-radius);
+	border: 1px solid var(--border-subdued);
 }
 </style>
