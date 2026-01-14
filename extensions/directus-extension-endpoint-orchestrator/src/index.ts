@@ -290,16 +290,40 @@ async function buildAgentPayload(
 
     // Determine directus_item: either from source_collection or task.input_data
     let directusItem = task.input_data || {};
+    let resolvedSourceItemId = requestBody.source_item_id;
 
-    // NEW: If task has source_collection configured, fetch from that collection
-    if (task.source_collection && requestBody.source_item_id) {
-      logger.info(`[BuildPayload] ${traceId} - Fetching from source_collection: ${task.source_collection}/${requestBody.source_item_id}`);
+    // If task has source_collection configured, fetch from that collection
+    if (task.source_collection) {
       const sourceService = new ItemsService(task.source_collection, {
         schema: freshSchema,
         accountability: { admin: true },
       });
-      directusItem = await sourceService.readOne(requestBody.source_item_id);
-      logger.info(`[BuildPayload] ${traceId} - Loaded source item with ${Object.keys(directusItem || {}).length} fields`);
+
+      // Auto-lookup source_item_id if not provided but source_collection is set
+      if (!resolvedSourceItemId) {
+        const projectId = task.project_id?.id || task.project_id;
+        if (projectId) {
+          logger.info(`[BuildPayload] ${traceId} - Auto-lookup: finding source item in ${task.source_collection} for project ${projectId}`);
+          const sourceItems = await sourceService.readByQuery({
+            filter: { project_id: { _eq: projectId } },
+            sort: ['-date_created'],
+            limit: 1,
+          });
+          if (sourceItems && sourceItems.length > 0) {
+            resolvedSourceItemId = sourceItems[0].id;
+            logger.info(`[BuildPayload] ${traceId} - Auto-lookup: found source item ${resolvedSourceItemId}`);
+          } else {
+            logger.warn(`[BuildPayload] ${traceId} - Auto-lookup: no source item found in ${task.source_collection} for project ${projectId}`);
+          }
+        }
+      }
+
+      // Fetch the source item if we have an ID
+      if (resolvedSourceItemId) {
+        logger.info(`[BuildPayload] ${traceId} - Fetching from source_collection: ${task.source_collection}/${resolvedSourceItemId}`);
+        directusItem = await sourceService.readOne(resolvedSourceItemId);
+        logger.info(`[BuildPayload] ${traceId} - Loaded source item with ${Object.keys(directusItem || {}).length} fields`);
+      }
     }
 
     // Include directus_item at root level for agent compatibility
@@ -325,7 +349,7 @@ async function buildAgentPayload(
       },
       project: task.project_id,
       tenant_id: task.tenant_id,
-      source_item_id: requestBody.source_item_id,
+      source_item_id: resolvedSourceItemId,
       // Provide input data as directus_item for agent server compatibility
       directus_item: directusItem,
       context: {
@@ -333,7 +357,7 @@ async function buildAgentPayload(
         task_id: task.id,
         project_id: task.project_id?.id || task.project_id || null,
         source_collection: task.source_collection,
-        source_item_id: requestBody.source_item_id,
+        source_item_id: resolvedSourceItemId,
       },
     };
   }
