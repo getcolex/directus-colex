@@ -13,6 +13,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { BlackboardService, createBlackboardService } from './lib/blackboard-service';
 import { SourceType, WriteEntryParams } from './lib/blackboard-types';
 import { detectConflicts, ResearchFindings } from './lib/conflict-detector';
+import { ANTHROPIC_TOOLS, handleReorderTask } from './tools';
 
 // Action types the AI can perform
 type ActionType = 'update_task' | 'create_task' | 'delete_task' | 'submit_form' | 'update_project';
@@ -28,142 +29,7 @@ interface AIAction {
 // CHAT-V2: SSE STREAMING WITH PROPER TOOL USE (Anthropic SDK)
 // ============================================================================
 
-// Anthropic tool definitions for Template Builder
-const ANTHROPIC_TOOLS: Anthropic.Tool[] = [
-  {
-    name: 'update_task',
-    description: 'Update an existing task in the current project. Use this to modify task name, description, status, form schema, or other properties.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        taskId: { type: 'number', description: 'The ID of the task to update' },
-        data: {
-          type: 'object',
-          description: 'Fields to update on the task',
-          properties: {
-            name: { type: 'string', description: 'New task name' },
-            description: { type: 'string', description: 'New task description' },
-            status: { type: 'string', enum: ['pending', 'running', 'done', 'error'], description: 'Task status' },
-            action_type: { type: 'string', enum: ['form', 'agent', 'review'], description: 'Type of task' },
-            form_schema: {
-              type: 'array',
-              description: 'Form field definitions for form-type tasks',
-              items: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  label: { type: 'string' },
-                  type: { type: 'string', enum: ['text', 'textarea', 'email', 'url', 'number', 'date', 'checkbox'] },
-                  required: { type: 'boolean' },
-                },
-              },
-            },
-          },
-        },
-      },
-      required: ['taskId', 'data'],
-    },
-  },
-  {
-    name: 'create_task',
-    description: 'Create a new task in the current project',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        name: { type: 'string', description: 'Task name (required)' },
-        description: { type: 'string', description: 'Task description' },
-        action_type: { type: 'string', enum: ['form', 'agent', 'review'], description: 'Type of task' },
-        tool_mode: { type: 'string', enum: ['research', 'generate', 'scrape'], description: 'For agent tasks, the tool mode' },
-        form_schema: {
-          type: 'array',
-          description: 'Form field definitions (required for form-type tasks)',
-          items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              label: { type: 'string' },
-              type: { type: 'string' },
-              required: { type: 'boolean' },
-            },
-          },
-        },
-      },
-      required: ['name'],
-    },
-  },
-  {
-    name: 'delete_task',
-    description: 'Delete a task from the project',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        taskId: { type: 'number', description: 'The ID of the task to delete' },
-      },
-      required: ['taskId'],
-    },
-  },
-  {
-    name: 'activate_task',
-    description: 'Activate a draft task so it can be run. Changes status from "draft" to "pending".',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        taskId: { type: 'number', description: 'The ID of the draft task to activate' },
-      },
-      required: ['taskId'],
-    },
-  },
-  {
-    name: 'reorder_task',
-    description: 'Move a task to a different position in the task list. Use this when users ask to reorder tasks (e.g., "move task X to the top", "put this before that").',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        taskId: { type: 'number', description: 'The ID of the task to move' },
-        position: { type: 'string', enum: ['first', 'last', 'before', 'after'], description: 'Where to move the task: "first" (top), "last" (bottom), "before" (before targetTaskId), "after" (after targetTaskId)' },
-        targetTaskId: { type: 'number', description: 'For "before" or "after" position, the ID of the task to position relative to' },
-      },
-      required: ['taskId', 'position'],
-    },
-  },
-  {
-    name: 'submit_form',
-    description: 'Submit form data for a form-type task. This saves the data as an output and marks the task as done.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        taskId: { type: 'number', description: 'The ID of the form task' },
-        data: { type: 'object', description: 'The form data to submit' },
-      },
-      required: ['taskId', 'data'],
-    },
-  },
-  {
-    name: 'enrich_output',
-    description: 'Add new columns to existing output data and use AI to populate values for each row. Use this when in enrichment mode to add fields like website_url, instagram_handle, etc. to existing table data.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        outputId: { type: 'number', description: 'The ID of the output to enrich (from enrichment context)' },
-        taskId: { type: 'number', description: 'The ID of the task that owns the output (from enrichment context)' },
-        newFields: {
-          type: 'array',
-          description: 'Array of new fields to add and populate',
-          items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string', description: 'Field name in snake_case (e.g., website_url, instagram_handle)' },
-              type: { type: 'string', enum: ['text', 'url', 'number', 'email', 'date'], description: 'Field data type' },
-              description: { type: 'string', description: 'Description to help AI populate the value' },
-            },
-            required: ['name', 'type'],
-          },
-        },
-      },
-      required: ['outputId', 'taskId', 'newFields'],
-    },
-  },
-];
+// Tool definitions imported from ./tools/definitions.ts
 
 // Conversation memory storage (in-memory, keyed by conversationId)
 const conversationSessions = new Map<string, Array<{ role: 'user' | 'assistant', content: string }>>();
@@ -910,83 +776,40 @@ Enrichment task ID: ${enrichmentContext.task_id}` : ''}`;
 
                     case 'reorder_task': {
                       const { taskId: reorderTaskId, position, targetTaskId } = toolInput;
-                      if (!reorderTaskId) throw new Error('taskId required');
-                      if (!projectId) throw new Error('projectId required for reorder_task');
-                      if (!position) throw new Error('position required');
 
-                      // Get all tasks for the project, sorted by sort_order
-                      const allTasks = await tasksService.readByQuery({
-                        filter: { project_id: { _eq: projectId } },
-                        sort: ['sort_order'],
-                      });
+                      // Use the new gap-based reorder handler
+                      const reorderResult = await handleReorderTask(
+                        {
+                          taskId: reorderTaskId,
+                          position,
+                          targetTaskId,
+                        },
+                        {
+                          tasksService: {
+                            readByQuery: (query: any) => tasksService.readByQuery(query),
+                            updateOne: (id: number, data: any) => tasksService.updateOne(id, data),
+                            updateMany: (ids: number[], data: any) => tasksService.updateMany(ids, data),
+                          },
+                          projectId,
+                        }
+                      );
 
-                      const taskToMove = allTasks.find((t: any) => t.id === reorderTaskId);
-                      if (!taskToMove) {
-                        toolResult = { success: false, error: `Task ${reorderTaskId} not found in project` };
-                        break;
+                      if (reorderResult.success && reorderResult.previousSortOrder !== undefined) {
+                        // Record for undo
+                        const history = actionHistory.get(conversationId) || [];
+                        history.push({
+                          type: 'update',
+                          collection: 'tb_tasks',
+                          id: reorderTaskId,
+                          previousData: { sort_order: reorderResult.previousSortOrder },
+                          newData: { sort_order: reorderResult.newSortOrder },
+                          timestamp: new Date().toISOString(),
+                        });
+                        if (history.length > MAX_HISTORY_SIZE) history.shift();
+                        actionHistory.set(conversationId, history);
                       }
 
-                      // Calculate new sort_order based on position
-                      let newSortOrder: number;
-
-                      if (position === 'first') {
-                        // Put at the very beginning
-                        const firstTask = allTasks[0];
-                        newSortOrder = firstTask ? (firstTask.sort_order || 0) - 1 : 0;
-                      } else if (position === 'last') {
-                        // Put at the very end
-                        const lastTask = allTasks[allTasks.length - 1];
-                        newSortOrder = lastTask ? (lastTask.sort_order || 0) + 1 : 0;
-                      } else if (position === 'before' && targetTaskId) {
-                        const targetTask = allTasks.find((t: any) => t.id === targetTaskId);
-                        if (!targetTask) {
-                          toolResult = { success: false, error: `Target task ${targetTaskId} not found` };
-                          break;
-                        }
-                        const targetIndex = allTasks.indexOf(targetTask);
-                        const prevTask = targetIndex > 0 ? allTasks[targetIndex - 1] : null;
-                        newSortOrder = prevTask
-                          ? ((prevTask.sort_order || 0) + (targetTask.sort_order || 0)) / 2
-                          : (targetTask.sort_order || 0) - 1;
-                      } else if (position === 'after' && targetTaskId) {
-                        const targetTask = allTasks.find((t: any) => t.id === targetTaskId);
-                        if (!targetTask) {
-                          toolResult = { success: false, error: `Target task ${targetTaskId} not found` };
-                          break;
-                        }
-                        const targetIndex = allTasks.indexOf(targetTask);
-                        const nextTask = targetIndex < allTasks.length - 1 ? allTasks[targetIndex + 1] : null;
-                        newSortOrder = nextTask
-                          ? ((targetTask.sort_order || 0) + (nextTask.sort_order || 0)) / 2
-                          : (targetTask.sort_order || 0) + 1;
-                      } else {
-                        toolResult = { success: false, error: `Invalid position "${position}" or missing targetTaskId` };
-                        break;
-                      }
-
-                      // Update the task's sort_order
-                      const previousSortOrder = taskToMove.sort_order;
-                      await tasksService.updateOne(reorderTaskId, { sort_order: newSortOrder });
-
-                      // Record for undo
-                      const history = actionHistory.get(conversationId) || [];
-                      history.push({
-                        type: 'update',
-                        collection: 'tb_tasks',
-                        id: reorderTaskId,
-                        previousData: { sort_order: previousSortOrder },
-                        newData: { sort_order: newSortOrder },
-                        timestamp: new Date().toISOString(),
-                      });
-                      if (history.length > MAX_HISTORY_SIZE) history.shift();
-                      actionHistory.set(conversationId, history);
-
-                      toolResult = {
-                        success: true,
-                        taskId: reorderTaskId,
-                        movedTo: position,
-                        newSortOrder
-                      };
+                      toolResult = reorderResult;
                       break;
                     }
 
@@ -3500,6 +3323,241 @@ Based on all this context, complete the task. Provide a comprehensive, well-stru
       }
     });
 
-    console.log('✓ [TemplateBuilder] Routes registered: /health, /chat-v2, /undo, /action-history, /chat, /chat-stream, /execute-task, /edit-text, /generate-tasks, /upload-image, /upload-images, /run-project, /approve-review, /project-status');
+    // ============================================================================
+    // PROJECT FILES: Upload, list, and delete files associated with projects
+    // ============================================================================
+
+    /**
+     * GET /projects/:projectId/files
+     * List all files for a project, optionally filtered by file_type and/or task_id
+     */
+    router.get('/projects/:projectId/files', async (req: any, res: any) => {
+      const traceId = generateTraceId();
+      const { projectId } = req.params;
+      const { file_type, task_id } = req.query;
+
+      console.log(`[TemplateBuilder][${traceId}] List files for project ${projectId}${file_type ? `, type: ${file_type}` : ''}${task_id ? `, task: ${task_id}` : ''}`);
+
+      if (!projectId) {
+        return res.status(400).json({ error: 'projectId is required', traceId });
+      }
+
+      try {
+        const projectFilesService = new ItemsService('tb_project_files', { schema: req.schema, accountability: req.accountability });
+
+        // Build filter
+        const filter: any = { project_id: { _eq: parseInt(projectId, 10) } };
+        if (file_type && ['input', 'template'].includes(file_type)) {
+          filter.file_type = { _eq: file_type };
+        }
+        if (task_id) {
+          filter.task_id = { _eq: parseInt(task_id, 10) };
+        }
+
+        // Fetch files with file details expanded
+        const files = await projectFilesService.readByQuery({
+          filter,
+          sort: ['-date_created'],
+          fields: ['*', 'file_id.*'],
+        });
+
+        // Transform response to include file details
+        const transformedFiles = files.map((f: any) => ({
+          id: f.id,
+          project_id: f.project_id,
+          task_id: f.task_id || null,
+          file_type: f.file_type,
+          date_created: f.date_created,
+          file: f.file_id ? {
+            id: f.file_id.id || f.file_id,
+            filename_download: f.file_id.filename_download,
+            title: f.file_id.title,
+            type: f.file_id.type,
+            filesize: f.file_id.filesize,
+            uploaded_on: f.file_id.uploaded_on,
+          } : null,
+        }));
+
+        res.json({
+          files: transformedFiles,
+          count: transformedFiles.length,
+          traceId,
+        });
+      } catch (error: any) {
+        console.error(`[TemplateBuilder][${traceId}] List files error:`, error);
+        res.status(500).json({
+          error: 'Failed to list files',
+          details: error.message,
+          traceId,
+        });
+      }
+    });
+
+    /**
+     * POST /projects/:projectId/files
+     * Upload a file and associate it with a project
+     *
+     * Expects multipart form data with:
+     * - file: The file to upload
+     * - file_type: 'input' | 'template' (defaults to 'input')
+     * - task_id: Optional task ID for input files attached to specific tasks
+     */
+    router.post('/projects/:projectId/files', async (req: any, res: any) => {
+      const traceId = generateTraceId();
+      const { projectId } = req.params;
+
+      console.log(`[TemplateBuilder][${traceId}] Upload file for project ${projectId}`);
+
+      if (!projectId) {
+        return res.status(400).json({ error: 'projectId is required', traceId });
+      }
+
+      try {
+        const { FilesService } = services;
+        const filesService = new FilesService({ schema: req.schema, accountability: req.accountability });
+        const projectFilesService = new ItemsService('tb_project_files', { schema: req.schema, accountability: req.accountability });
+        const projectsService = new ItemsService('tb_projects', { schema: req.schema, accountability: req.accountability });
+
+        // Verify project exists
+        try {
+          await projectsService.readOne(parseInt(projectId, 10));
+        } catch {
+          return res.status(404).json({ error: 'Project not found', traceId });
+        }
+
+        // Get file_type from body (form data or JSON)
+        const fileType = req.body?.file_type || 'input';
+        if (!['input', 'template'].includes(fileType)) {
+          return res.status(400).json({ error: 'file_type must be "input" or "template"', traceId });
+        }
+
+        // Get optional task_id from body
+        const taskId = req.body?.task_id ? parseInt(req.body.task_id, 10) : null;
+
+        // Upload file using Directus FilesService
+        // The file should be available in req (handled by Directus middleware)
+        if (!req.file && !req.files) {
+          return res.status(400).json({ error: 'No file uploaded', traceId });
+        }
+
+        const uploadedFile = req.file || (req.files && req.files[0]);
+
+        // Create the file in directus_files
+        const fileId = await filesService.uploadOne(
+          uploadedFile.buffer || uploadedFile.stream,
+          {
+            filename_download: uploadedFile.originalname || uploadedFile.filename,
+            type: uploadedFile.mimetype,
+            title: uploadedFile.originalname || uploadedFile.filename,
+            storage: 'local',
+          }
+        );
+
+        // Create the junction record
+        const projectFile = await projectFilesService.createOne({
+          project_id: parseInt(projectId, 10),
+          file_id: fileId,
+          file_type: fileType,
+          task_id: taskId,
+        });
+
+        // Fetch the complete record with file details
+        const completeRecord = await projectFilesService.readOne(projectFile, {
+          fields: ['*', 'file_id.*'],
+        });
+
+        res.json({
+          success: true,
+          id: projectFile,
+          project_file: {
+            id: completeRecord.id,
+            project_id: completeRecord.project_id,
+            task_id: completeRecord.task_id || null,
+            file_type: completeRecord.file_type,
+            date_created: completeRecord.date_created,
+            file: completeRecord.file_id ? {
+              id: completeRecord.file_id.id || completeRecord.file_id,
+              filename_download: completeRecord.file_id.filename_download,
+              title: completeRecord.file_id.title,
+              type: completeRecord.file_id.type,
+              filesize: completeRecord.file_id.filesize,
+            } : null,
+          },
+          traceId,
+        });
+      } catch (error: any) {
+        console.error(`[TemplateBuilder][${traceId}] Upload file error:`, error);
+        res.status(500).json({
+          error: 'Failed to upload file',
+          details: error.message,
+          traceId,
+        });
+      }
+    });
+
+    /**
+     * DELETE /projects/:projectId/files/:fileId
+     * Delete a file association from a project
+     * Also deletes the underlying file from directus_files
+     */
+    router.delete('/projects/:projectId/files/:fileId', async (req: any, res: any) => {
+      const traceId = generateTraceId();
+      const { projectId, fileId } = req.params;
+
+      console.log(`[TemplateBuilder][${traceId}] Delete file ${fileId} from project ${projectId}`);
+
+      if (!projectId || !fileId) {
+        return res.status(400).json({ error: 'projectId and fileId are required', traceId });
+      }
+
+      try {
+        const { FilesService } = services;
+        const filesService = new FilesService({ schema: req.schema, accountability: req.accountability });
+        const projectFilesService = new ItemsService('tb_project_files', { schema: req.schema, accountability: req.accountability });
+
+        // Find the project file record
+        const projectFiles = await projectFilesService.readByQuery({
+          filter: {
+            id: { _eq: fileId },
+            project_id: { _eq: parseInt(projectId, 10) },
+          },
+        });
+
+        if (!projectFiles || projectFiles.length === 0) {
+          return res.status(404).json({ error: 'File not found in project', traceId });
+        }
+
+        const projectFile = projectFiles[0];
+        const directusFileId = projectFile.file_id;
+
+        // Delete the junction record first
+        await projectFilesService.deleteOne(fileId);
+
+        // Delete the actual file from directus_files
+        if (directusFileId) {
+          try {
+            await filesService.deleteOne(directusFileId);
+          } catch (fileDeleteError: any) {
+            // Log but don't fail - the junction record is already deleted
+            console.warn(`[TemplateBuilder][${traceId}] Could not delete directus file ${directusFileId}:`, fileDeleteError.message);
+          }
+        }
+
+        res.json({
+          success: true,
+          deleted_id: fileId,
+          traceId,
+        });
+      } catch (error: any) {
+        console.error(`[TemplateBuilder][${traceId}] Delete file error:`, error);
+        res.status(500).json({
+          error: 'Failed to delete file',
+          details: error.message,
+          traceId,
+        });
+      }
+    });
+
+    console.log('✓ [TemplateBuilder] Routes registered: /health, /chat-v2, /undo, /action-history, /chat, /chat-stream, /execute-task, /edit-text, /generate-tasks, /upload-image, /upload-images, /run-project, /approve-review, /project-status, /projects/:projectId/files');
   },
 };
