@@ -3602,6 +3602,100 @@ Based on all this context, complete the task. Provide a comprehensive, well-stru
       }
     });
 
-    console.log('✓ [TemplateBuilder] Routes registered: /health, /chat-v2, /undo, /action-history, /chat, /chat-stream, /execute-task, /edit-text, /generate-tasks, /upload-image, /upload-images, /run-project, /approve-review, /project-status, /projects/:projectId/files');
+    // ============================================================================
+    // SKILL REGISTRATION ENDPOINTS
+    // ============================================================================
+
+    /**
+     * POST /projects/:projectId/skills/file
+     * Register a file as a skill on the blackboard
+     */
+    router.post('/projects/:projectId/skills/file', async (req: any, res: any) => {
+      try {
+        const { projectId } = req.params;
+        const { fileId, skillKey, summary } = req.body;
+
+        const blackboard = createBlackboardService(
+          ItemsService,
+          req.schema,
+          req.accountability
+        );
+
+        const fileSkillService = new FileSkillService(
+          new services.FilesService({ schema: req.schema, accountability: req.accountability }),
+          new ItemsService('tb_project_files', { schema: req.schema, accountability: req.accountability }),
+          blackboard
+        );
+
+        const result = await fileSkillService.registerFileAsSkill({
+          projectId: parseInt(projectId),
+          fileId,
+          skillKey,
+          summary,
+        });
+
+        if (result.success) {
+          res.json(result);
+        } else {
+          res.status(400).json(result);
+        }
+      } catch (error: any) {
+        res.status(500).json({ error: error.message || String(error) });
+      }
+    });
+
+    /**
+     * POST /projects/:projectId/skills/collection
+     * Register a collection as a skill on the blackboard
+     */
+    router.post('/projects/:projectId/skills/collection', async (req: any, res: any) => {
+      try {
+        const { projectId } = req.params;
+        const { collection, skillKey, summary, allowedFields } = req.body;
+
+        const blackboard = createBlackboardService(
+          ItemsService,
+          req.schema,
+          req.accountability
+        );
+
+        const schemaInspector = {
+          getCollectionInfo: async (coll: string) => {
+            const fieldsService = new services.FieldsService({ schema: req.schema, accountability: req.accountability });
+            const fieldList = await fieldsService.readAll(coll);
+            return { fields: fieldList };
+          },
+          getRowCount: async (coll: string) => {
+            const itemsService = new ItemsService(coll, { schema: req.schema, accountability: req.accountability });
+            const result = await itemsService.readByQuery({ aggregate: { count: '*' } });
+            return result[0]?.count || 0;
+          },
+        };
+
+        const collectionSkillService = new CollectionSkillService(
+          (coll) => new ItemsService(coll, { schema: req.schema, accountability: req.accountability }),
+          blackboard,
+          schemaInspector
+        );
+
+        const result = await collectionSkillService.registerCollectionAsSkill({
+          projectId: parseInt(projectId),
+          collection,
+          skillKey,
+          summary,
+          allowedFields,
+        });
+
+        if (result.success) {
+          res.json(result);
+        } else {
+          res.status(400).json(result);
+        }
+      } catch (error: any) {
+        res.status(500).json({ error: error.message || String(error) });
+      }
+    });
+
+    console.log('✓ [TemplateBuilder] Routes registered: /health, /chat-v2, /undo, /action-history, /chat, /chat-stream, /execute-task, /edit-text, /generate-tasks, /upload-image, /upload-images, /run-project, /approve-review, /project-status, /projects/:projectId/files, /projects/:projectId/skills/file, /projects/:projectId/skills/collection');
   },
 };
