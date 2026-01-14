@@ -1,0 +1,38 @@
+{
+  "name": "directus-extension-endpoint-template-builder",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Template Builder AI endpoints - uses Claude Code CLI for chat, task execution, and text editing",
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-extension-endpoint",
+    "template-builder",
+    "claude"
+  ],
+  "icon": "smart_toy",
+  "files": [
+    "dist"
+  ],
+  "directus:extension": {
+    "type": "endpoint",
+    "path": "dist/index.js",
+    "source": "src/index.ts",
+    "host": "^11.0.0"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build -w --no-minify",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^12.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2"
+  }
+}

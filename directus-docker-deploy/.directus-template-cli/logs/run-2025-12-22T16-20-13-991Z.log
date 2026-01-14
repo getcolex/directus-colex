@@ -1,0 +1,8 @@
+Log started at 2025-12-22T16-20-13-991Z
+2025-12-22T16:20:15.563Z - ERROR: Error: Cannot convert undefined or null to object Context: {}
+2025-12-22T16:20:23.679Z - ERROR: Unknown error: "Error downloading 0c78df64-e981-4709-b9af-12ce19fd6db1.json: response.arrayBuffer is not a function" Context: {}
+2025-12-22T16:20:44.582Z - ERROR: Unknown error: "Error downloading 9fafc078-cf3a-4cc5-a0b3-e333d8012ee5.json: response.arrayBuffer is not a function" Context: {}
+2025-12-22T16:20:46.756Z - ERROR: Unknown error: "Error downloading 7fdcd344-6fe6-41a2-8ead-324f6e3a3e09.html: Directus Error: Location \"local\" doesn't exist. (Status: 500) {\"code\":\"INTERNAL_SERVER_ERROR\"}" Context: {}
+2025-12-22T16:20:50.831Z - ERROR: Unknown error: "Error downloading cc6a8f4d-71d4-468c-b9d8-cc2905f8773d.json: response.arrayBuffer is not a function" Context: {}
+2025-12-22T16:20:57.328Z - ERROR: Unknown error: "Error downloading c6cab06f-1488-4ea5-a4f4-778606b0374f.jpg: Directus Error: Location \"local\" doesn't exist. (Status: 500) {\"code\":\"INTERNAL_SERVER_ERROR\"}" Context: {}
+2025-12-22T16:21:00.429Z - ERROR: Unknown error: "Error downloading dc8a2486-30be-47e9-ad11-c7b22af594bf.png: Directus Error: Location \"local\" doesn't exist. (Status: 500) {\"code\":\"INTERNAL_SERVER_ERROR\"}" Context: {}

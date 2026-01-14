@@ -1,0 +1,695 @@
+{
+  "id": "8053de1b-c0b1-4feb-a032-5e8ab74bda8e",
+  "name": "create tasks",
+  "icon": "add_task",
+  "color": null,
+  "description": "add task details to project on template selection",
+  "status": "active",
+  "trigger": "event",
+  "accountability": "all",
+  "options": {
+    "type": "action",
+    "scope": [
+      "items.create"
+    ],
+    "collections": [
+      "project",
+      "shipping_project"
+    ]
+  },
+  "operation": "61a8a403-7092-4a43-8e69-0b592e3a060f",
+  "date_created": "2025-10-27T09:29:28.856Z",
+  "user_created": "5a40a40f-ca81-4e81-84e3-fd0001b95286",
+  "operations": [
+    {
+      "id": "2cc6594b-46ee-4ac6-96ca-a0e1adc245a3",
+      "name": "Create Tasks",
+      "key": "item_update_23luc",
+      "type": "item-create",
+      "position_x": 41,
+      "position_y": 1,
+      "options": {
+        "permissions": "$trigger",
+        "emitEvents": true,
+        "collection": "tasks",
+        "payload": [
+          {
+            "name": "Tell us about the client",
+            "project_id": "{{$trigger.key}}",
+            "status": "ready",
+            "needs_approval": false,
+            "depends_on": [],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "brand_research_form",
+            "display_fields": [
+              "id"
+            ],
+            "action_type": "create_item_single",
+            "action_config": {
+              "collection": "{output_collection}",
+              "prefill": {
+                "project_id": "{project_id}",
+                "task_id": "{id}"
+              },
+              "lookup_filter": {
+                "project_id": {
+                  "_eq": "{project_id}"
+                }
+              },
+              "existing_message": "Form already filled for this project. Opening existing entry..."
+            },
+            "webhook_url": null,
+            "webhook_method": null,
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "action_type": "create_item_single",
+              "action_config": {
+                "collection": "{output_collection}",
+                "prefill": {
+                  "project_id": "{project_id}",
+                  "task_id": "{id}"
+                },
+                "lookup_filter": {
+                  "project_id": {
+                    "_eq": "{project_id}"
+                  }
+                },
+                "existing_message": "Form already filled for this project. Opening existing entry..."
+              },
+              "output_collection": "brand_research_form",
+              "status": "ready",
+              "title": "Tell us about the client",
+              "display_fields": [
+                "id"
+              ],
+              "flow_id": null,
+              "webhook_url": null,
+              "webhook_method": "POST",
+              "link_url": null,
+              "module_path": null
+            }
+          },
+          {
+            "name": "Get competitors and inspirational brands",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Tell us about the client"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "brand_inspirations",
+            "display_fields": [
+              "id",
+              "name",
+              "about_the_brand"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20competitors%20and%20inspirational%20brands&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "brand_inspirations",
+              "status": "new",
+              "title": "Get competitors and inspirational brands",
+              "display_fields": [
+                "id",
+                "name",
+                "about_the_brand"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20competitors%20and%20inspirational%20brands&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Get links to collected brands",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Get competitors and inspirational brands"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "brand_links",
+            "display_fields": [
+              "id",
+              "name",
+              "url"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20links%20to%20collected%20brands&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "brand_links",
+              "status": "new",
+              "title": "Get links to collected brands",
+              "display_fields": [
+                "id",
+                "name",
+                "url"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20links%20to%20collected%20brands&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Get images and data from collected brands",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Get links to collected brands"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "image_assets",
+            "display_fields": [
+              "id",
+              "name",
+              "src",
+              "alt_text",
+              "page_name"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20images%20and%20data%20from%20collected%20brands&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "image_assets",
+              "status": "new",
+              "title": "Get images and data from collected brands",
+              "display_fields": [
+                "id",
+                "name",
+                "src",
+                "alt_text",
+                "page_name"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20images%20and%20data%20from%20collected%20brands&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Get details and brand directions from collected data",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Get images and data from collected brands"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "brand_inspirations",
+            "display_fields": [
+              "id",
+              "name",
+              "about_the_brand",
+              "positioning",
+              "value_props",
+              "price_tier",
+              "visual_summary",
+              "tone_of_voice",
+              "channels",
+              "bet_summary",
+              "aesthetic_analogy",
+              "emotional_impression",
+              "perceived_vs_claimed"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20details%20and%20brand%20directions%20from%20collected%20data&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "brand_inspirations",
+              "status": "new",
+              "title": "Get details and brand directions from collected data",
+              "display_fields": [
+                "id",
+                "name",
+                "about_the_brand",
+                "positioning",
+                "value_props",
+                "price_tier",
+                "visual_summary",
+                "tone_of_voice",
+                "channels",
+                "bet_summary",
+                "aesthetic_analogy",
+                "emotional_impression",
+                "perceived_vs_claimed"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20details%20and%20brand%20directions%20from%20collected%20data&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Get competitor insights",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Get details and brand directions from collected data"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "brand_inspirations",
+            "display_fields": [
+              "id",
+              "name",
+              "bet_summary"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20competitor%20insights&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "brand_inspirations",
+              "status": "new",
+              "title": "Get competitor insights",
+              "display_fields": [
+                "id",
+                "name",
+                "bet_summary"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20competitor%20insights&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Get market study document",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Get competitor insights"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "market_study_document",
+            "display_fields": [
+              "id",
+              "name"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20market%20study%20document&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "market_study_document",
+              "status": "new",
+              "title": "Get market study document",
+              "display_fields": [
+                "id",
+                "name"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Get%20market%20study%20document&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Generate possible directions",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Get market study document"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "visual_direction",
+            "display_fields": [
+              "id",
+              "direction_name",
+              "direction_narrative"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Generate%20possible%20directions&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "visual_direction",
+              "status": "new",
+              "title": "Generate possible directions",
+              "display_fields": [
+                "id",
+                "direction_name",
+                "direction_narrative"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Generate%20possible%20directions&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Generate visual options for each direction",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Generate possible directions"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "visual_direction",
+            "display_fields": [
+              "id",
+              "direction_name",
+              "visual_options"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Generate%20visual%20options%20for%20each%20direction&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "visual_direction",
+              "status": "new",
+              "title": "Generate visual options for each direction",
+              "display_fields": [
+                "id",
+                "direction_name",
+                "visual_options"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Generate%20visual%20options%20for%20each%20direction&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Generate brand assets",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": false,
+            "depends_on": [
+              "Generate visual options for each direction"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": "image_assets",
+            "display_fields": [
+              "id",
+              "name"
+            ],
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Generate%20brand%20assets&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": "image_assets",
+              "status": "new",
+              "title": "Generate brand assets",
+              "display_fields": [
+                "id",
+                "name"
+              ],
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Generate%20brand%20assets&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          },
+          {
+            "name": "Generate downloadable web document",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": false,
+            "depends_on": [
+              "Generate brand assets"
+            ],
+            "user_created": "9dfa9001-bde3-4ffb-9d20-5547db4c43cc",
+            "output_collection": null,
+            "display_fields": null,
+            "action_type": "webhook",
+            "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Generate%20downloadable%20web%20document&projectId={{$trigger.key}}",
+            "webhook_method": "POST",
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "output_collection": null,
+              "status": "new",
+              "title": "Generate downloadable web document",
+              "display_fields": null,
+              "action_type": "webhook",
+              "webhook_url": "http://206.189.140.175:8080/task/run?taskName=Generate%20downloadable%20web%20document&projectId={{$trigger.key}}",
+              "webhook_method": "POST"
+            }
+          }
+        ]
+      },
+      "resolve": null,
+      "reject": null,
+      "flow": "8053de1b-c0b1-4feb-a032-5e8ab74bda8e",
+      "date_created": "2025-10-27T10:04:42.267Z",
+      "user_created": "5a40a40f-ca81-4e81-84e3-fd0001b95286"
+    },
+    {
+      "id": "61a8a403-7092-4a43-8e69-0b592e3a060f",
+      "name": "Condition",
+      "key": "condition_gzj03",
+      "type": "condition",
+      "position_x": 22,
+      "position_y": 1,
+      "options": {
+        "filter": {
+          "$trigger": {
+            "payload": {
+              "template_id": {
+                "_eq": 1
+              }
+            }
+          }
+        }
+      },
+      "resolve": "2cc6594b-46ee-4ac6-96ca-a0e1adc245a3",
+      "reject": "63ab629b-a026-47d6-94dc-70af6826ed4f",
+      "flow": "8053de1b-c0b1-4feb-a032-5e8ab74bda8e",
+      "date_created": "2025-11-20T17:17:10.620Z",
+      "user_created": "9745ca88-5447-4e64-9bcc-9470a6ea7316"
+    },
+    {
+      "id": "63ab629b-a026-47d6-94dc-70af6826ed4f",
+      "name": "Create Tasks",
+      "key": "item_update_23luc_qiscq",
+      "type": "item-create",
+      "position_x": 41,
+      "position_y": 17,
+      "options": {
+        "collection": "shipping_tasks",
+        "emitEvents": true,
+        "permissions": "$trigger",
+        "payload": [
+          {
+            "name": "Create Enquiry Form",
+            "project_id": "{{$trigger.key}}",
+            "status": "ready",
+            "needs_approval": false,
+            "depends_on": [],
+            "action_type": "create_item",
+            "output_collection": "rfq_enquiries",
+            "display_fields": [
+              "id",
+              "status",
+              "commodity_type",
+              "port_of_loading",
+              "port_of_discharge"
+            ],
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "action_type": "create_item",
+              "output_collection": "rfq_enquiries",
+              "status": "ready",
+              "title": "Create Enquiry Form",
+              "display_fields": [
+                "id",
+                "status",
+                "commodity_type",
+                "port_of_loading",
+                "port_of_discharge"
+              ]
+            }
+          },
+          {
+            "name": "Verify and Select Suppliers",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Create Enquiry Form"
+            ],
+            "action_type": "review_outputs",
+            "output_collection": "rfq_matched_suppliers",
+            "display_fields": [
+              "id",
+              "supplier_id",
+              "is_selected"
+            ],
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "action_type": "review_outputs",
+              "output_collection": "rfq_matched_suppliers",
+              "status": "new",
+              "title": "Verify and Select Suppliers",
+              "display_fields": [
+                "id",
+                "supplier_id",
+                "is_selected"
+              ]
+            }
+          },
+          {
+            "name": "Review and Approve Email Drafts",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Verify and Select Suppliers"
+            ],
+            "action_type": "review_outputs",
+            "output_collection": "enquiry_supplier_map",
+            "display_fields": [
+              "id",
+              "supplier_id",
+              "email_body"
+            ],
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "action_type": "review_outputs",
+              "output_collection": "enquiry_supplier_map",
+              "status": "new",
+              "title": "Review and Approve Email Drafts",
+              "display_fields": [
+                "id",
+                "supplier_id",
+                "email_body"
+              ]
+            }
+          },
+          {
+            "name": "Send Email",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": false,
+            "depends_on": [
+              "Review and Approve Email Drafts"
+            ],
+            "action_type": "flow",
+            "flow_id": "e06f2f28-ac9c-4e2e-b691-ff29cd306425",
+            "output_collection": null,
+            "display_fields": null,
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "action_type": "flow",
+              "output_collection": null,
+              "status": "new",
+              "title": "Send Email",
+              "display_fields": null,
+              "flow_id": "e06f2f28-ac9c-4e2e-b691-ff29cd306425"
+            }
+          },
+          {
+            "name": "Await Supplier Responses",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Send Email"
+            ],
+            "action_type": "review_outputs",
+            "output_collection": "enquiry_supplier_map",
+            "display_fields": [
+              "id",
+              "supplier_id",
+              "quoted_rate",
+              "status"
+            ],
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "action_type": "review_outputs",
+              "output_collection": "enquiry_supplier_map",
+              "status": "new",
+              "title": "Await Supplier Responses",
+              "display_fields": [
+                "id",
+                "supplier_id",
+                "quoted_rate",
+                "status"
+              ]
+            }
+          },
+          {
+            "name": "Evaluate Quotes and Finalize Selection",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": true,
+            "depends_on": [
+              "Await Supplier Responses"
+            ],
+            "action_type": "review_outputs",
+            "output_collection": "enquiry_supplier_map",
+            "display_fields": [
+              "id",
+              "supplier_id",
+              "quoted_rate",
+              "is_selected"
+            ],
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "action_type": "review_outputs",
+              "output_collection": "enquiry_supplier_map",
+              "status": "new",
+              "title": "Evaluate Quotes and Finalize Selection",
+              "display_fields": [
+                "id",
+                "supplier_id",
+                "quoted_rate",
+                "is_selected"
+              ]
+            }
+          },
+          {
+            "name": "Send Confirmation Email",
+            "project_id": "{{$trigger.key}}",
+            "status": "new",
+            "needs_approval": false,
+            "depends_on": [
+              "Evaluate Quotes and Finalize Selection"
+            ],
+            "action_type": "flow",
+            "flow_id": "39f06a68-6bb6-4639-873b-7b1ccd41362e",
+            "output_collection": null,
+            "display_fields": null,
+            "button_context": {
+              "task_id": null,
+              "project_id": "{{$trigger.key}}",
+              "action_type": "flow",
+              "output_collection": null,
+              "status": "new",
+              "title": "Send Confirmation Email",
+              "display_fields": null,
+              "flow_id": "39f06a68-6bb6-4639-873b-7b1ccd41362e"
+            }
+          }
+        ]
+      },
+      "resolve": null,
+      "reject": null,
+      "flow": "8053de1b-c0b1-4feb-a032-5e8ab74bda8e",
+      "date_created": "2025-11-20T18:07:10.522Z",
+      "user_created": "9745ca88-5447-4e64-9bcc-9470a6ea7316"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+services:
+  postgres:
+    image: postgis/postgis:13-3.4-alpine
+    restart: "no"  # No auto-restart for dev - easier debugging
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-directus}
+      POSTGRES_USER: ${DB_USER:-directus}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-directus}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - directus_dev
+
+  directus:
+    image: directus/directus:latest
+    restart: "no"  # No auto-restart for dev - easier debugging
+    ports:
+      - "8055:8055"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    environment:
+      # Database connection
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-directus}
+      DB_USER: ${DB_USER:-directus}
+      DB_PASSWORD: ${DB_PASSWORD:-directus}
+      DB_SSL: false
+      DB_SSL_REJECT_UNAUTHORIZED: false
+      DB_SCHEMA: public
+
+      # Admin setup (dev defaults)
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-d1r3ctu5}
+
+      # Secrets (use dev defaults if not in .env)
+      KEY: ${KEY:-dev-key-replace-in-production-32chars}
+      SECRET: ${SECRET:-dev-secret-replace-in-production-with-64-character-random-string}
+
+      # Dev settings
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8055}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-dev-webhook-secret}
+      DISABLE_TELEMETRY: true
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+
+      # Dev-specific: Enable extension auto-reload
+      EXTENSIONS_AUTO_RELOAD: true
+      EXTENSIONS_PATH: /directus/extensions
+
+      # Dev-specific: Verbose logging
+      LOG_LEVEL: debug
+      LOG_STYLE: pretty
+
+      # Dev-specific: No caching for easier development
+      CACHE_ENABLED: false
+
+      # Dev-specific: Force schema detection
+      DB_EXCLUDE_TABLES: ""
+
+      # API Keys (optional for dev)
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      EXA_API_KEY: ${EXA_API_KEY:-}
+
+    volumes:
+      # Named volumes for persistence
+      - uploads:/directus/uploads
+      - extensions:/directus/extensions
+
+      # Mount custom extensions for hot-reload
+      - ../extensions/directus-extension-wcag-theme-colex-light:/directus/extensions/directus-extension-wcag-theme-colex-light
+      - ../extensions/directus-extension-wcag-theme-colex-dark:/directus/extensions/directus-extension-wcag-theme-colex-dark
+      # Button system bundle (includes: configurable-button, populate-button-context, task-dependency-v2, webhook-proxy, review-module)
+      - ../extensions/colex-button-system-bundle:/directus/extensions/colex-button-system-bundle
+      # Orchestrator endpoint for agent execution
+      - ../extensions/directus-extension-endpoint-orchestrator:/directus/extensions/directus-extension-endpoint-orchestrator
+
+    networks:
+      - directus_dev
+
+volumes:
+  uploads:
+  extensions:
+  postgres_data:
+
+networks:
+  directus_dev:
+    driver: bridge

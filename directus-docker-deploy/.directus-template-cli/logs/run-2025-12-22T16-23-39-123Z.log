@@ -1,0 +1,4 @@
+Log started at 2025-12-22T16-23-39-123Z
+2025-12-22T16:23:39.735Z - INFO: Applying template - colex-production to http://localhost:8055
+2025-12-22T16:23:48.671Z - ERROR: Error: Cannot read properties of null (reading 'group') Context: {}
+2025-12-22T16:23:49.487Z - ERROR: Unknown error: "File not found: /Users/parijat/Documents/colex/directus-docker-deploy/templates/src/relations.json" Context: {}

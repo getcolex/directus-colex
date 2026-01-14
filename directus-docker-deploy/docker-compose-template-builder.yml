@@ -1,0 +1,90 @@
+# Template Builder - Dedicated Directus Instance
+# Port: 8056 (separate from main dev on 8055)
+# Usage: docker-compose -f docker-compose-template-builder.yml up -d
+
+services:
+  postgres_tb:
+    image: postgres:15-alpine
+    restart: "no"
+    environment:
+      POSTGRES_DB: template_builder
+      POSTGRES_USER: directus
+      POSTGRES_PASSWORD: template_builder_password
+    volumes:
+      - postgres_data_tb:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - template_builder_net
+
+  directus_tb:
+    image: directus/directus:latest
+    restart: "no"
+    ports:
+      - "8056:8055"
+    depends_on:
+      - postgres_tb
+    environment:
+      # Database
+      DB_CLIENT: pg
+      DB_HOST: postgres_tb
+      DB_PORT: 5432
+      DB_DATABASE: template_builder
+      DB_USER: directus
+      DB_PASSWORD: template_builder_password
+      DB_SSL: false
+      DB_SSL_REJECT_UNAUTHORIZED: false
+      DB_SCHEMA: public
+
+      # Admin credentials
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: admin123
+
+      # Security keys
+      KEY: template-builder-key-32-characters
+      SECRET: template-builder-secret-64-characters-long-enough-for-security
+
+      # URLs
+      PUBLIC_URL: http://localhost:8056
+
+      # Development settings
+      DISABLE_TELEMETRY: true
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      EXTENSIONS_AUTO_RELOAD: true
+      EXTENSIONS_PATH: /directus/extensions
+      LOG_LEVEL: debug
+      LOG_STYLE: pretty
+      CACHE_ENABLED: false
+
+      # CORS - allow local HTML files and all origins for dev
+      CORS_ENABLED: true
+      CORS_ORIGIN: "true"
+      CORS_METHODS: "GET,POST,PATCH,DELETE,OPTIONS"
+      CORS_ALLOWED_HEADERS: "Content-Type,Authorization"
+      CORS_CREDENTIALS: true
+
+      # API Keys (for AI features)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+
+      # File Storage - local driver for file uploads
+      STORAGE_LOCATIONS: local
+      STORAGE_LOCAL_DRIVER: local
+      STORAGE_LOCAL_ROOT: /directus/uploads
+
+    volumes:
+      - uploads_tb:/directus/uploads
+      - extensions_tb:/directus/extensions
+      # Mount the template builder extension
+      - ../extensions/directus-extension-endpoint-template-builder:/directus/extensions/directus-extension-endpoint-template-builder
+    networks:
+      - template_builder_net
+
+volumes:
+  uploads_tb:
+  extensions_tb:
+  postgres_data_tb:
+
+networks:
+  template_builder_net:
+    driver: bridge

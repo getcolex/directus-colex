@@ -1,0 +1,4 @@
+Log started at 2025-12-22T16-24-14-489Z
+2025-12-22T16:24:15.084Z - INFO: Applying template - colex-production to http://localhost:8055
+2025-12-22T16:24:18.505Z - ERROR: Error: Cannot read properties of null (reading 'group') Context: {}
+2025-12-22T16:24:25.564Z - ERROR: Error: ENOENT: no such file or directory, open '/Users/parijat/Documents/colex/directus-docker-deploy/templates/src/assets/0c78df64-e981-4709-b9af-12ce19fd6db1.json' Context: {}

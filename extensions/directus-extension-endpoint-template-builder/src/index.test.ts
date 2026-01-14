@@ -162,6 +162,9 @@ describe('Template Builder Extension', () => {
       post: vi.fn((path: string, handler: any) => {
         routes[`POST ${path}`] = handler;
       }),
+      delete: vi.fn((path: string, handler: any) => {
+        routes[`DELETE ${path}`] = handler;
+      }),
     };
 
     mockContext = {

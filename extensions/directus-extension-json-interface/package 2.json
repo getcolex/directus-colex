@@ -1,0 +1,23 @@
+{
+  "name": "directus-extension-json-interface",
+  "version": "1.0.0",
+  "description": "Edit JSON fields with syntax highlighting and formatting",
+  "icon": "data_object",
+  "type": "module",
+  "directus:extension": {
+    "type": "interface",
+    "path": "dist/index.js",
+    "source": "src/index.ts",
+    "host": "^10.0.0 || ^11.0.0"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build -w --no-minify"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^12.0.2",
+    "typescript": "^5.7.2",
+    "vue": "^3.5.0"
+  },
+  "license": "MIT"
+}
