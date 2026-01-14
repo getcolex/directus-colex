@@ -14,6 +14,10 @@ import { BlackboardService, createBlackboardService } from './lib/blackboard-ser
 import { SourceType, WriteEntryParams } from './lib/blackboard-types';
 import { detectConflicts, ResearchFindings } from './lib/conflict-detector';
 import { ANTHROPIC_TOOLS, handleReorderTask } from './tools';
+import { handleReadFile, handleQueryCollection } from './lib/skill-tool-handlers';
+import { FileSkillService } from './lib/file-skill-service';
+import { CollectionSkillService } from './lib/collection-skill-service';
+import { formatBlackboardContext } from './lib/format-blackboard-context';
 
 // Action types the AI can perform
 type ActionType = 'update_task' | 'create_task' | 'delete_task' | 'submit_form' | 'update_project';
@@ -965,6 +969,46 @@ Return ONLY the JSON object, no explanation.`;
                         outputId: enrichOutputId,
                         taskId: enrichTaskId,
                       };
+                      break;
+                    }
+
+                    case 'read_file': {
+                      const { skill_key, query, pages } = toolInput as any;
+                      const fileSkillService = new FileSkillService(
+                        new services.FilesService({ schema, accountability }),
+                        new services.ItemsService('tb_project_files', { schema, accountability }),
+                        blackboard
+                      );
+                      toolResult = await handleReadFile(
+                        { skill_key, query, pages },
+                        { projectId, fileSkillService, blackboardService: blackboard }
+                      );
+                      break;
+                    }
+
+                    case 'query_collection': {
+                      const { skill_key, filter, fields, limit, sort } = toolInput as any;
+                      const schemaInspector = {
+                        getCollectionInfo: async (collection: string) => {
+                          const fieldsService = new services.FieldsService({ schema, accountability });
+                          const fieldList = await fieldsService.readAll(collection);
+                          return { fields: fieldList };
+                        },
+                        getRowCount: async (collection: string) => {
+                          const itemsService = new services.ItemsService(collection, { schema, accountability });
+                          const result = await itemsService.readByQuery({ aggregate: { count: '*' } });
+                          return result[0]?.count || 0;
+                        },
+                      };
+                      const collectionSkillService = new CollectionSkillService(
+                        (coll) => new services.ItemsService(coll, { schema, accountability }),
+                        blackboard,
+                        schemaInspector
+                      );
+                      toolResult = await handleQueryCollection(
+                        { skill_key, filter, fields, limit, sort },
+                        { projectId, collectionSkillService, blackboardService: blackboard }
+                      );
                       break;
                     }
                   }
