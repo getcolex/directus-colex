@@ -87,3 +87,56 @@ describe('Review Module - parseFieldsParam', () => {
 		});
 	});
 });
+
+describe('Review Module - Done Button Logic', () => {
+	describe('allReviewed computed', () => {
+		/**
+		 * allReviewed should return true when all items are either 'approved' or 'rejected'
+		 * (no 'pending' items remain)
+		 */
+		const isAllReviewed = (items: Array<{ output_status: string }>) => {
+			if (!items || items.length === 0) return false;
+			return items.every(item =>
+				item.output_status === 'approved' || item.output_status === 'rejected'
+			);
+		};
+
+		it('should return false when there are pending items', () => {
+			const items = [
+				{ output_status: 'approved' },
+				{ output_status: 'pending' },
+				{ output_status: 'rejected' },
+			];
+			expect(isAllReviewed(items)).toBe(false);
+		});
+
+		it('should return true when all items are approved or rejected', () => {
+			const items = [
+				{ output_status: 'approved' },
+				{ output_status: 'approved' },
+				{ output_status: 'rejected' },
+			];
+			expect(isAllReviewed(items)).toBe(true);
+		});
+
+		it('should return true when all items are approved', () => {
+			const items = [
+				{ output_status: 'approved' },
+				{ output_status: 'approved' },
+			];
+			expect(isAllReviewed(items)).toBe(true);
+		});
+
+		it('should return true when all items are rejected', () => {
+			const items = [
+				{ output_status: 'rejected' },
+				{ output_status: 'rejected' },
+			];
+			expect(isAllReviewed(items)).toBe(true);
+		});
+
+		it('should return false for empty array', () => {
+			expect(isAllReviewed([])).toBe(false);
+		});
+	});
+});

@@ -24,8 +24,19 @@
 			<!-- Quick Filters with counts and Approve All button -->
 			<div class="filters-row">
 				<QuickFilters v-model:filter="activeFilter" :counts="filterCounts" />
+				<!-- Action button: Approve All Remaining OR Done -->
 				<v-button
-					v-if="remainingCount > 0 && permissions.edit"
+					v-if="allReviewed"
+					@click="handleDone"
+					:disabled="loading"
+					small
+					class="done-btn"
+				>
+					<v-icon name="check_circle" small />
+					Done
+				</v-button>
+				<v-button
+					v-else-if="remainingCount > 0 && permissions.edit"
 					@click="handleApproveAllRemaining"
 					:disabled="loading"
 					small
@@ -43,6 +54,7 @@
 				:fields="fields"
 				:permissions="permissions"
 				:loading="loading"
+				:collection="collection"
 				v-model:selected="selected"
 				@approve="handleApprove"
 				@reject="handleReject"
@@ -56,6 +68,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useApi } from '@directus/extensions-sdk';
 import GalleryLayout from './layouts/GalleryLayout.vue';
 import TableLayout from './layouts/TableLayout.vue';
 import QuickFilters from './components/QuickFilters.vue';
@@ -64,6 +77,7 @@ import { useApproval } from './composables/useApproval';
 
 const route = useRoute();
 const router = useRouter();
+const api = useApi();
 
 // Parse query params with safe JSON parsing
 const safeJsonParse = (str, fallback) => {
@@ -107,8 +121,19 @@ const selected = ref([]);
 const showCreateModal = ref(false);
 const activeFilter = ref('all');
 
+// Parse task_id from query params (passed from button context)
+const taskId = ref(route.query.task_id || null);
+
 // Fetch outputs
 const { outputs, loading, stats, refresh } = useOutputs(collection, filter);
+
+// Computed: check if all items are reviewed (approved or rejected)
+const allReviewed = computed(() => {
+	if (!outputs.value || outputs.value.length === 0) return false;
+	return outputs.value.every(item =>
+		item.output_status === 'approved' || item.output_status === 'rejected'
+	);
+});
 
 // Filtered outputs based on active quick filter
 const filteredOutputs = computed(() => {
@@ -234,6 +259,27 @@ const handleApproveAllRemaining = async () => {
 	}
 };
 
+const handleDone = async () => {
+	if (taskId.value) {
+		try {
+			// Update the task status to 'done'
+			await api.patch(`/items/tasks/${taskId.value}`, {
+				status: 'done'
+			});
+
+			// Navigate back
+			router.back();
+		} catch (error) {
+			console.error('Failed to update task status:', error);
+			// Still navigate back even if update fails
+			router.back();
+		}
+	} else {
+		// No task_id, just navigate back
+		router.back();
+	}
+};
+
 onMounted(() => {
 	// Collection validation happens in template via v-else-if="!collection"
 });
@@ -299,6 +345,17 @@ onMounted(() => {
 	--v-button-color: #FFFFFF !important;
 	--v-button-color-hover: #FFFFFF !important;
 	flex-shrink: 0;
+}
+
+.done-btn {
+	--v-button-background-color: #1A1A1A !important;
+	--v-button-background-color-hover: #2D2D2D !important;
+	--v-button-color: #FFFFFF !important;
+	--v-button-color-hover: #FFFFFF !important;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	gap: 4px;
 }
 
 /* Hide the empty navigation pane (keep module-bar icons visible) */

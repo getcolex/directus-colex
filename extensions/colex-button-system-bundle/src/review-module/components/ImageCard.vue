@@ -1,15 +1,8 @@
 <template>
 	<div class="image-card" :class="cardClasses">
-		<div class="checkbox-overlay">
-			<v-checkbox :model-value="selected" @update:model-value="$emit('toggle-select')" />
-		</div>
-
-		<div class="image-container" @click="toggleReject">
-			<img v-if="imageUrl" :src="imageUrl" :alt="item.name || 'Output image'" />
-			<div v-else class="no-image">
-				<v-icon name="image" large />
-				<span>No Image</span>
-			</div>
+		<!-- Image container when image exists -->
+		<div v-if="imageUrl" class="image-container" @click="toggleReject">
+			<img :src="imageUrl" :alt="item.name || 'Output image'" />
 			<div class="status-badges">
 				<div v-if="isEdited" class="status-badge status-edited">
 					<v-icon name="edit" small />
@@ -20,10 +13,34 @@
 			</div>
 		</div>
 
+		<!-- Empty thumbnail placeholder when no image but showEmptyThumbnail is true -->
+		<div v-else-if="showEmptyThumbnail" class="empty-thumbnail" @click="toggleReject">
+			<v-icon name="image" class="empty-icon" />
+			<div class="status-badges">
+				<div v-if="isEdited" class="status-badge status-edited">
+					<v-icon name="edit" small />
+				</div>
+				<div v-if="item.output_status" class="status-badge" :class="`status-${item.output_status}`">
+					{{ item.output_status }}
+				</div>
+			</div>
+		</div>
+
+		<!-- Status badge when no image and no placeholder - show inline with content -->
+		<div v-else class="status-header">
+			<div v-if="isEdited" class="status-badge status-edited">
+				<v-icon name="edit" small />
+			</div>
+			<div v-if="item.output_status" class="status-badge" :class="`status-${item.output_status}`">
+				{{ item.output_status }}
+			</div>
+		</div>
+
 		<div ref="cardRef" class="card-content" :style="isEditMode && capturedContentHeight ? { minHeight: capturedContentHeight + 'px' } : {}">
 			<!-- View Mode -->
 			<div v-if="!isEditMode" class="metadata">
 				<h4 v-if="item.name" class="item-name">{{ item.name }}</h4>
+				<p v-if="item.description" class="description">{{ item.description }}</p>
 				<p v-if="item.rationale" class="rationale">{{ item.rationale }}</p>
 
 				<!-- Display other fields -->
@@ -44,6 +61,19 @@
 						@keydown.escape="cancelEdit"
 						@keydown.ctrl.enter="saveField('name')"
 						@keydown.meta.enter="saveField('name')"
+						class="edit-input"
+					/>
+				</div>
+
+				<!-- Description field (if exists) -->
+				<div v-if="'description' in item" class="field-edit">
+					<label>Description</label>
+					<textarea
+						v-model="editData.description"
+						@blur="saveField('description')"
+						@keydown.escape="cancelEdit"
+						@keydown.ctrl.enter="saveField('description')"
+						@keydown.meta.enter="saveField('description')"
 						class="edit-input"
 					/>
 				</div>
@@ -108,13 +138,13 @@ const props = defineProps({
 		type: Object,
 		default: () => ({ edit: true, delete: false })
 	},
-	selected: {
+	showEmptyThumbnail: {
 		type: Boolean,
 		default: false
 	}
 });
 
-const emit = defineEmits(['approve', 'reject', 'delete', 'edit', 'toggle-select']);
+const emit = defineEmits(['approve', 'reject', 'delete', 'edit']);
 
 // Edit mode state
 const isEditMode = ref(false);
@@ -203,7 +233,6 @@ const isEdited = computed(() => {
 });
 
 const cardClasses = computed(() => ({
-	selected: props.selected,
 	approved: isApproved.value,
 	rejected: isRejected.value,
 	editing: isEditMode.value
@@ -211,7 +240,7 @@ const cardClasses = computed(() => ({
 
 // Fields to display (exclude system fields and image fields)
 const displayFields = computed(() => {
-	const excludeFields = ['id', 'output_status', 'reviewed_by', 'reviewed_at', 'task_id', 'task_run_id', 'url', 'image', 'thumbnail_url', 'file', 'name', 'rationale', 'date_created', 'date_updated'];
+	const excludeFields = ['id', 'output_status', 'reviewed_by', 'reviewed_at', 'task_id', 'task_run_id', 'url', 'image', 'thumbnail_url', 'file', 'name', 'description', 'rationale', 'date_created', 'date_updated'];
 	return props.fields.filter(f => !excludeFields.includes(f));
 });
 
@@ -238,26 +267,21 @@ const openImage = () => {
 
 <style scoped>
 .image-card {
-	border: 2px solid var(--border-normal);
+	border: 1px solid var(--border-normal);
 	border-radius: 8px;
 	overflow: hidden;
 	transition: all 0.2s;
 	position: relative;
 	background: var(--background-page);
 	break-inside: avoid;
-	margin-bottom: 16px;
 	display: inline-block;
 	width: 100%;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .image-card:hover {
-	border-color: var(--border-normal-alt);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.image-card.selected {
 	border-color: var(--primary);
-	box-shadow: 0 0 0 2px var(--primary-alt);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .image-card.approved {
@@ -268,14 +292,28 @@ const openImage = () => {
 	opacity: 0.7;
 }
 
-.checkbox-overlay {
-	position: absolute;
-	top: 8px;
-	left: 8px;
-	z-index: 2;
-	background: var(--background-page);
-	border-radius: 4px;
-	padding: 4px;
+.status-header {
+	display: flex;
+	gap: 4px;
+	padding: 12px 12px 0;
+	justify-content: flex-end;
+}
+
+.empty-thumbnail {
+	position: relative;
+	overflow: hidden;
+	cursor: pointer;
+	background: var(--background-subdued);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 120px;
+}
+
+.empty-thumbnail .empty-icon {
+	--v-icon-size: 48px;
+	color: var(--foreground-subdued);
+	opacity: 0.4;
 }
 
 .image-container {
@@ -302,13 +340,6 @@ const openImage = () => {
 	opacity: 0.4;
 }
 
-.no-image {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 8px;
-	color: var(--foreground-subdued);
-}
 
 .status-badges {
 	position: absolute;
@@ -355,6 +386,7 @@ const openImage = () => {
 	padding: 12px;
 	display: flex;
 	flex-direction: column;
+	min-height: 100px;
 }
 
 .metadata {
@@ -366,9 +398,17 @@ const openImage = () => {
 
 .item-name {
 	margin: 0 0 8px;
-	font-size: 14px;
-	font-weight: 600;
+	font-size: 16px;
+	font-weight: 700;
 	color: var(--foreground-normal);
+	line-height: 1.3;
+}
+
+.description {
+	font-size: 13px;
+	color: var(--foreground-normal);
+	margin: 0 0 8px;
+	line-height: 1.5;
 }
 
 .rationale {
@@ -376,6 +416,7 @@ const openImage = () => {
 	color: var(--foreground-subdued);
 	margin: 0 0 12px;
 	line-height: 1.4;
+	font-style: italic;
 }
 
 .field-display {

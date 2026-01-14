@@ -12,8 +12,7 @@
 				:item="item"
 				:fields="fields"
 				:permissions="permissions"
-				:selected="selected.includes(item.id)"
-				@toggle-select="toggleSelect(item.id)"
+				:showEmptyThumbnail="showEmptyThumbnail"
 				@approve="$emit('approve', [item.id])"
 				@reject="$emit('reject', [item.id])"
 				@delete="$emit('delete', [item.id])"
@@ -26,7 +25,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, computed } from 'vue';
 import ImageCard from '../components/ImageCard.vue';
 
 const props = defineProps({
@@ -45,21 +44,27 @@ const props = defineProps({
 	loading: {
 		type: Boolean,
 		default: false
-	},
-	selected: {
-		type: Array,
-		default: () => []
 	}
 });
 
-const emit = defineEmits(['approve', 'reject', 'delete', 'edit', 'update:selected']);
+// Determine if we should show empty thumbnails
+// Only show them if at least one item has an image (mixed state)
+const showEmptyThumbnail = computed(() => {
+	if (!props.items || props.items.length === 0) return false;
 
-const toggleSelect = (id) => {
-	const newSelected = props.selected.includes(id)
-		? props.selected.filter(s => s !== id)
-		: [...props.selected, id];
-	emit('update:selected', newSelected);
-};
+	const imageFields = ['url', 'image', 'thumbnail_url', 'file', 'image_url', 'thumbnail'];
+	const hasAnyImage = props.items.some(item =>
+		imageFields.some(field => item[field])
+	);
+	const hasAnyWithoutImage = props.items.some(item =>
+		!imageFields.some(field => item[field])
+	);
+
+	// Show placeholder only in mixed state (some have images, some don't)
+	return hasAnyImage && hasAnyWithoutImage;
+});
+
+const emit = defineEmits(['approve', 'reject', 'delete', 'edit']);
 </script>
 
 <style scoped>
@@ -85,8 +90,13 @@ const toggleSelect = (id) => {
 
 .gallery-grid {
 	column-count: 3;
-	column-gap: 16px;
-	padding: 4px;
+	column-gap: 24px;
+	padding: 8px;
+}
+
+/* Add spacing between cards */
+.gallery-grid > * {
+	margin-bottom: 24px;
 }
 
 /* Responsive columns */
