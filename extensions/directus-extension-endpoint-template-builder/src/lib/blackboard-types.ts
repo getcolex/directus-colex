@@ -81,3 +81,57 @@ export interface QueryParams {
   source_id?: string;
   source_type?: SourceType;
 }
+
+export const SKILL_PREFIX = '@';
+
+export interface FileSkillValue {
+  type: 'file_skill';
+  file_id: string;
+  filename: string;
+  content_type: string;
+  summary: string;
+  page_count?: number;
+  extracted_text?: string;
+}
+
+export interface CollectionSkillValue {
+  type: 'collection_skill';
+  collection: string;
+  summary: string;
+  row_count: number;
+  schema: Record<string, { type: string; enum?: string[] }>;
+}
+
+export interface FileSkillEntry extends BlackboardEntry {
+  key: `@${string}`;
+  value: FileSkillValue;
+}
+
+export interface CollectionSkillEntry extends BlackboardEntry {
+  key: `@${string}`;
+  value: CollectionSkillValue;
+}
+
+export type SkillEntry = FileSkillEntry | CollectionSkillEntry;
+
+export function isFileSkill(entry: BlackboardEntry): entry is FileSkillEntry {
+  return (
+    entry.key.startsWith(SKILL_PREFIX) &&
+    typeof entry.value === 'object' &&
+    entry.value !== null &&
+    entry.value.type === 'file_skill'
+  );
+}
+
+export function isCollectionSkill(entry: BlackboardEntry): entry is CollectionSkillEntry {
+  return (
+    entry.key.startsWith(SKILL_PREFIX) &&
+    typeof entry.value === 'object' &&
+    entry.value !== null &&
+    entry.value.type === 'collection_skill'
+  );
+}
+
+export function isSkill(entry: BlackboardEntry): entry is SkillEntry {
+  return isFileSkill(entry) || isCollectionSkill(entry);
+}
