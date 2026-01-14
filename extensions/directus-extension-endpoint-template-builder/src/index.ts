@@ -992,12 +992,25 @@ Return ONLY the JSON object, no explanation.`;
                         getCollectionInfo: async (collection: string) => {
                           const fieldsService = new services.FieldsService({ schema, accountability });
                           const fieldList = await fieldsService.readAll(collection);
-                          return { fields: fieldList };
+                          // fieldsService.readAll can return array or object depending on Directus version
+                          let fieldsArray: Array<{ field: string; type: string }>;
+                          if (Array.isArray(fieldList)) {
+                            fieldsArray = fieldList.map((f: any) => ({ field: f.field, type: f.type }));
+                          } else if (fieldList && typeof fieldList === 'object') {
+                            fieldsArray = Object.values(fieldList).map((f: any) => ({ field: f.field, type: f.type }));
+                          } else {
+                            fieldsArray = [];
+                          }
+                          return { fields: fieldsArray };
                         },
                         getRowCount: async (collection: string) => {
-                          const itemsService = new services.ItemsService(collection, { schema, accountability });
-                          const result = await itemsService.readByQuery({ aggregate: { count: '*' } });
-                          return result[0]?.count || 0;
+                          try {
+                            const itemsService = new services.ItemsService(collection, { schema, accountability });
+                            const items = await itemsService.readByQuery({ limit: -1, fields: ['id'] });
+                            return Array.isArray(items) ? items.length : 0;
+                          } catch {
+                            return 0;
+                          }
                         },
                       };
                       const collectionSkillService = new CollectionSkillService(
@@ -3663,12 +3676,27 @@ Based on all this context, complete the task. Provide a comprehensive, well-stru
           getCollectionInfo: async (coll: string) => {
             const fieldsService = new services.FieldsService({ schema: req.schema, accountability: req.accountability });
             const fieldList = await fieldsService.readAll(coll);
-            return { fields: fieldList };
+            // fieldsService.readAll can return array or object depending on Directus version
+            let fieldsArray: Array<{ field: string; type: string }>;
+            if (Array.isArray(fieldList)) {
+              fieldsArray = fieldList.map((f: any) => ({ field: f.field, type: f.type }));
+            } else if (fieldList && typeof fieldList === 'object') {
+              const values = Object.values(fieldList);
+              console.log('[TemplateBuilder] Object.values result type:', typeof values, 'isArray:', Array.isArray(values), 'length:', values?.length);
+              fieldsArray = values.map((f: any) => ({ field: f.field, type: f.type }));
+            } else {
+              fieldsArray = [];
+            }
+            return { fields: fieldsArray };
           },
           getRowCount: async (coll: string) => {
-            const itemsService = new ItemsService(coll, { schema: req.schema, accountability: req.accountability });
-            const result = await itemsService.readByQuery({ aggregate: { count: '*' } });
-            return result[0]?.count || 0;
+            try {
+              const itemsService = new ItemsService(coll, { schema: req.schema, accountability: req.accountability });
+              const items = await itemsService.readByQuery({ limit: -1, fields: ['id'] });
+              return Array.isArray(items) ? items.length : 0;
+            } catch {
+              return 0;
+            }
           },
         };
 
