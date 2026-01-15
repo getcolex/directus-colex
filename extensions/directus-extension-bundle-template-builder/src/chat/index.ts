@@ -425,60 +425,6 @@ Enrichment task ID: ${enrichmentContext.task_id}` : ''}`;
       }
     });
 
-    /**
-     * POST /chat
-     * Legacy AI conversation (non-streaming JSON response)
-     */
-    router.post('/chat', async (req: any, res: any) => {
-      const traceId = randomUUID();
-      const { message, projectId, conversationHistory } = req.body;
-
-      // Input validation
-      if (!message || typeof message !== 'string' || message.trim().length === 0) {
-        return res.status(400).json({ error: 'Message is required', traceId });
-      }
-
-      try {
-        // TODO: Implement full chat logic
-        res.json({
-          response: 'Chat endpoint is under construction.',
-          suggestions: [],
-          traceId,
-        });
-      } catch (error: any) {
-        res.status(500).json({ error: error.message, traceId });
-      }
-    });
-
-    /**
-     * POST /chat-stream
-     * SSE streaming chat (legacy, simpler than chat-v2)
-     */
-    router.post('/chat-stream', async (req: any, res: any) => {
-      const { message, projectId, conversationHistory } = req.body;
-
-      // Input validation
-      if (!message || typeof message !== 'string' || message.trim().length === 0) {
-        return res.status(400).json({ error: 'Message is required' });
-      }
-
-      // Set up SSE headers
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.flushHeaders?.();
-
-      try {
-        // TODO: Implement full chat-stream logic
-        res.write(`event: content\ndata: ${JSON.stringify({ text: 'Chat stream is under construction.' })}\n\n`);
-        res.write(`event: done\ndata: ${JSON.stringify({ response: 'Chat stream is under construction.', suggestions: [] })}\n\n`);
-        res.end();
-      } catch (error: any) {
-        res.write(`event: error\ndata: ${JSON.stringify({ message: error.message })}\n\n`);
-        res.end();
-      }
-    });
-
-    console.log('✓ [TB-Chat] Routes registered: /chat-v2, /chat, /chat-stream');
+    console.log('✓ [TB-Chat] Routes registered: /chat-v2');
   },
 };

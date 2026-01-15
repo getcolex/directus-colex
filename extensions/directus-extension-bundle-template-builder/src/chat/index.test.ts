@@ -1,7 +1,7 @@
 /**
  * Chat Endpoint Tests
  *
- * Tests for chat-v2 and legacy chat routes with SSE streaming.
+ * Tests for chat-v2 with SSE streaming and agentic tool execution.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -173,20 +173,6 @@ describe('TB-Chat Endpoint', () => {
     });
   });
 
-  describe('POST /chat', () => {
-    it('returns 400 when message is missing', async () => {
-      const handler = router.routes.post['/chat'];
-      expect(handler).toBeDefined();
-
-      const req = createMockRequest({ projectId: 123 });
-      const res = createMockResponse();
-
-      await handler(req, res);
-
-      expect(res.statusCode).toBe(400);
-      expect(res.data.error).toBe('Message is required');
-    });
-  });
 });
 
 describe('Chat-v2 SSE Streaming', () => {
