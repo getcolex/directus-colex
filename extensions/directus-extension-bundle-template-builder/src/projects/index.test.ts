@@ -90,6 +90,189 @@ describe('TB-Projects Endpoint', () => {
       expect(res.statusCode).toBe(400);
       expect(res.data.error).toBe('projectId is required');
     });
+
+    it('returns no_tasks status when project has no tasks', async () => {
+      router = createMockRouter();
+      const mockTasksService = {
+        readOne: vi.fn().mockResolvedValue(null),
+        readByQuery: vi.fn().mockResolvedValue([]),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+      };
+      const mockBlackboardService = {
+        readOne: vi.fn().mockResolvedValue(null),
+        readByQuery: vi.fn().mockResolvedValue([]),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+      };
+      const ItemsService = vi.fn().mockImplementation((collection: string) => {
+        if (collection === 'tb_tasks') return mockTasksService;
+        if (collection === 'tb_blackboard') return mockBlackboardService;
+        return {
+          readOne: vi.fn().mockResolvedValue(null),
+          readByQuery: vi.fn().mockResolvedValue([]),
+          createOne: vi.fn().mockResolvedValue(1),
+          updateOne: vi.fn().mockResolvedValue({}),
+        };
+      });
+
+      endpoint.handler(router, {
+        services: { ItemsService },
+        logger: { info: vi.fn(), error: vi.fn() },
+      });
+
+      const handler = router.routes.post['/run-project'];
+      const req = {
+        body: { projectId: 1 },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.status).toBe('no_tasks');
+    });
+
+    it('returns complete status when all tasks are done', async () => {
+      router = createMockRouter();
+      const mockTasksService = {
+        readOne: vi.fn().mockResolvedValue(null),
+        readByQuery: vi.fn().mockResolvedValue([
+          { id: 1, name: 'Task 1', status: 'done', stage: 1 },
+          { id: 2, name: 'Task 2', status: 'done', stage: 1 },
+        ]),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+      };
+      const mockBlackboardService = {
+        readOne: vi.fn().mockResolvedValue(null),
+        readByQuery: vi.fn().mockResolvedValue([{ entries: {} }]),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+      };
+      const ItemsService = vi.fn().mockImplementation((collection: string) => {
+        if (collection === 'tb_tasks') return mockTasksService;
+        if (collection === 'tb_blackboard') return mockBlackboardService;
+        return {
+          readOne: vi.fn().mockResolvedValue(null),
+          readByQuery: vi.fn().mockResolvedValue([]),
+          createOne: vi.fn().mockResolvedValue(1),
+          updateOne: vi.fn().mockResolvedValue({}),
+        };
+      });
+
+      endpoint.handler(router, {
+        services: { ItemsService },
+        logger: { info: vi.fn(), error: vi.fn() },
+      });
+
+      const handler = router.routes.post['/run-project'];
+      const req = {
+        body: { projectId: 1 },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.status).toBe('complete');
+      expect(res.data.completed).toBe(2);
+    });
+
+    it('returns waiting_review status when tasks need review', async () => {
+      router = createMockRouter();
+      const mockTasksService = {
+        readOne: vi.fn().mockResolvedValue(null),
+        readByQuery: vi.fn().mockResolvedValue([
+          { id: 1, name: 'Task 1', status: 'done', stage: 1 },
+          { id: 2, name: 'Task 2', status: 'waiting_review', stage: 2 },
+        ]),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+      };
+      const mockBlackboardService = {
+        readOne: vi.fn().mockResolvedValue(null),
+        readByQuery: vi.fn().mockResolvedValue([{ entries: {} }]),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+      };
+      const ItemsService = vi.fn().mockImplementation((collection: string) => {
+        if (collection === 'tb_tasks') return mockTasksService;
+        if (collection === 'tb_blackboard') return mockBlackboardService;
+        return {
+          readOne: vi.fn().mockResolvedValue(null),
+          readByQuery: vi.fn().mockResolvedValue([]),
+          createOne: vi.fn().mockResolvedValue(1),
+          updateOne: vi.fn().mockResolvedValue({}),
+        };
+      });
+
+      endpoint.handler(router, {
+        services: { ItemsService },
+        logger: { info: vi.fn(), error: vi.fn() },
+      });
+
+      const handler = router.routes.post['/run-project'];
+      const req = {
+        body: { projectId: 1 },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.status).toBe('waiting_review');
+      expect(res.data.review_tasks).toHaveLength(1);
+    });
+
+    it('returns needs_input status when form tasks need human input', async () => {
+      router = createMockRouter();
+      const mockTasksService = {
+        readOne: vi.fn().mockResolvedValue(null),
+        readByQuery: vi.fn().mockResolvedValue([
+          { id: 1, name: 'Get Info', status: 'pending', stage: 1, action_type: 'form', form_schema: [{ name: 'brand' }] },
+        ]),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+      };
+      const mockBlackboardService = {
+        readOne: vi.fn().mockResolvedValue(null),
+        readByQuery: vi.fn().mockResolvedValue([{ entries: {} }]),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+      };
+      const ItemsService = vi.fn().mockImplementation((collection: string) => {
+        if (collection === 'tb_tasks') return mockTasksService;
+        if (collection === 'tb_blackboard') return mockBlackboardService;
+        return {
+          readOne: vi.fn().mockResolvedValue(null),
+          readByQuery: vi.fn().mockResolvedValue([]),
+          createOne: vi.fn().mockResolvedValue(1),
+          updateOne: vi.fn().mockResolvedValue({}),
+        };
+      });
+
+      endpoint.handler(router, {
+        services: { ItemsService },
+        logger: { info: vi.fn(), error: vi.fn() },
+      });
+
+      const handler = router.routes.post['/run-project'];
+      const req = {
+        body: { projectId: 1 },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.status).toBe('needs_input');
+      expect(res.data.form_tasks).toHaveLength(1);
+    });
   });
 
   describe('GET /project-status/:projectId', () => {
