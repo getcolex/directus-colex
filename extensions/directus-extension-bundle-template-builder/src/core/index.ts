@@ -8,6 +8,7 @@ import {
   createBlackboardService,
   createFileSkillService,
   createCollectionSkillService,
+  createFileUploadService,
 } from '../shared';
 
 // Action history for undo/redo functionality
@@ -464,84 +465,25 @@ export default {
     router.post('/projects/:projectId/files', async (req: any, res: any) => {
       const { projectId } = req.params;
 
+      if (!projectId) {
+        return res.status(400).json({ error: 'projectId is required' });
+      }
+
       try {
-        const { FilesService } = services;
-        const filesService = new FilesService({
-          schema: req.schema,
-          accountability: req.accountability,
-        });
-        const projectFilesService = new ItemsService('tb_project_files', {
-          schema: req.schema,
-          accountability: req.accountability,
-        });
-        const projectsService = new ItemsService('tb_projects', {
-          schema: req.schema,
-          accountability: req.accountability,
+        const uploadService = createFileUploadService(services, req.schema, req.accountability);
+        const result = await uploadService.uploadFromRequest(req, {
+          projectId: parseInt(projectId, 10),
         });
 
-        // Verify project exists
-        try {
-          await projectsService.readOne(parseInt(projectId, 10));
-        } catch {
-          return res.status(404).json({ error: 'Project not found' });
+        if (!result.success) {
+          const status = result.error === 'Project not found' ? 404 : 400;
+          return res.status(status).json({ error: result.error });
         }
-
-        // Get file_type from body (form data or JSON)
-        const fileType = req.body?.file_type || 'input';
-        if (!['input', 'template'].includes(fileType)) {
-          return res.status(400).json({ error: 'file_type must be "input" or "template"' });
-        }
-
-        // Get optional task_id from body
-        const taskId = req.body?.task_id ? parseInt(req.body.task_id, 10) : null;
-
-        // Check for uploaded file
-        if (!req.file && !req.files) {
-          return res.status(400).json({ error: 'No file uploaded' });
-        }
-
-        const uploadedFile = req.file || (req.files && req.files[0]);
-
-        // Create the file in directus_files
-        const fileId = await filesService.uploadOne(uploadedFile.buffer || uploadedFile.stream, {
-          filename_download: uploadedFile.originalname || uploadedFile.filename,
-          type: uploadedFile.mimetype,
-          title: uploadedFile.originalname || uploadedFile.filename,
-          storage: 'local',
-        });
-
-        // Create the junction record
-        const projectFile = await projectFilesService.createOne({
-          project_id: parseInt(projectId, 10),
-          file_id: fileId,
-          file_type: fileType,
-          task_id: taskId,
-        });
-
-        // Fetch the complete record with file details
-        const completeRecord = await projectFilesService.readOne(projectFile, {
-          fields: ['*', 'file_id.*'],
-        });
 
         res.json({
           success: true,
-          id: projectFile,
-          project_file: {
-            id: completeRecord.id,
-            project_id: completeRecord.project_id,
-            task_id: completeRecord.task_id || null,
-            file_type: completeRecord.file_type,
-            date_created: completeRecord.date_created,
-            file: completeRecord.file_id
-              ? {
-                  id: completeRecord.file_id.id || completeRecord.file_id,
-                  filename_download: completeRecord.file_id.filename_download,
-                  title: completeRecord.file_id.title,
-                  type: completeRecord.file_id.type,
-                  filesize: completeRecord.file_id.filesize,
-                }
-              : null,
-          },
+          id: result.projectFile!.id,
+          project_file: result.projectFile,
         });
       } catch (error: any) {
         console.error('[TB-Core] Upload file error:', error);

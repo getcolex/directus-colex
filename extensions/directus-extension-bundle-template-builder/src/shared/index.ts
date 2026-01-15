@@ -12,6 +12,7 @@ export { BlackboardService, createBlackboardService } from './blackboard-service
 export { createFileSkillService, type FileSkillService } from './file-skill-service';
 export { createCollectionSkillService, type CollectionSkillService } from './collection-skill-service';
 export { createSkillToolHandlers, type SkillToolHandlers } from './skill-tool-handlers';
+export { createFileUploadService, FileUploadService } from './file-upload-service';
 
 // Utilities
 export { detectConflicts, stringSimilarity, industriesMatch, type ResearchFindings } from './conflict-detector';

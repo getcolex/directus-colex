@@ -7,6 +7,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import endpoint, { recordAction, getActionHistory } from './index';
 
+// Mock the multipart parser for file upload tests
+vi.mock('../shared/multipart-parser', () => ({
+  parseMultipartRequest: vi.fn(),
+}));
+
+import { parseMultipartRequest } from '../shared/multipart-parser';
+
 // Mock router
 function createMockRouter() {
   const routes: Record<string, Record<string, Function>> = {
@@ -567,6 +574,7 @@ describe('Project Files Endpoints', () => {
   }
 
   beforeEach(() => {
+    vi.clearAllMocks();
     router = createMockRouter();
 
     mockProjectFilesService = {
@@ -703,8 +711,7 @@ describe('Project Files Endpoints', () => {
       const handler = router.routes.post['/projects/:projectId/files'];
       const req = {
         params: { projectId: '999' },
-        body: { file_type: 'input' },
-        file: { buffer: Buffer.from('test'), originalname: 'test.pdf', mimetype: 'application/pdf' },
+        headers: { 'content-type': 'multipart/form-data' },
         schema: {},
         accountability: {},
       };
@@ -717,10 +724,12 @@ describe('Project Files Endpoints', () => {
     });
 
     it('returns 400 when no file uploaded', async () => {
+      (parseMultipartRequest as any).mockResolvedValue({ fields: {}, file: null });
+
       const handler = router.routes.post['/projects/:projectId/files'];
       const req = {
         params: { projectId: '1' },
-        body: { file_type: 'input' },
+        headers: { 'content-type': 'multipart/form-data' },
         schema: {},
         accountability: {},
       };
@@ -733,11 +742,15 @@ describe('Project Files Endpoints', () => {
     });
 
     it('returns 400 for invalid file_type', async () => {
+      (parseMultipartRequest as any).mockResolvedValue({
+        fields: { file_type: 'invalid' },
+        file: { filename: 'test.pdf', mimeType: 'application/pdf', stream: {} },
+      });
+
       const handler = router.routes.post['/projects/:projectId/files'];
       const req = {
         params: { projectId: '1' },
-        body: { file_type: 'invalid' },
-        file: { buffer: Buffer.from('test'), originalname: 'test.pdf', mimetype: 'application/pdf' },
+        headers: { 'content-type': 'multipart/form-data' },
         schema: {},
         accountability: {},
       };
@@ -750,11 +763,16 @@ describe('Project Files Endpoints', () => {
     });
 
     it('uploads file and creates project_file record', async () => {
+      const mockStream = { pipe: vi.fn() };
+      (parseMultipartRequest as any).mockResolvedValue({
+        fields: { file_type: 'input', task_id: '5' },
+        file: { filename: 'test.pdf', mimeType: 'application/pdf', stream: mockStream },
+      });
+
       const handler = router.routes.post['/projects/:projectId/files'];
       const req = {
         params: { projectId: '1' },
-        body: { file_type: 'input', task_id: '5' },
-        file: { buffer: Buffer.from('test content'), originalname: 'test.pdf', mimetype: 'application/pdf' },
+        headers: { 'content-type': 'multipart/form-data' },
         schema: {},
         accountability: {},
       };
