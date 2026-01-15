@@ -1,0 +1,47 @@
+{
+  "name": "directus-extension-bundle-template-builder",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Template Builder bundle - modular AI endpoints for chat, tasks, and projects",
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-extension-bundle",
+    "template-builder",
+    "claude"
+  ],
+  "icon": "smart_toy",
+  "files": [
+    "dist"
+  ],
+  "directus:extension": {
+    "type": "bundle",
+    "partial": true,
+    "host": "^11.0.0",
+    "path": {
+      "app": "dist/app.js",
+      "api": "dist/api.js"
+    },
+    "entries": [
+      { "type": "endpoint", "name": "tb-core", "source": "src/core/index.ts" },
+      { "type": "endpoint", "name": "tb-chat", "source": "src/chat/index.ts" },
+      { "type": "endpoint", "name": "tb-tasks", "source": "src/tasks/index.ts" },
+      { "type": "endpoint", "name": "tb-projects", "source": "src/projects/index.ts" }
+    ]
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "dev": "directus-extension build -w --no-minify",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^12.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2"
+  }
+}

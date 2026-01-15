@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Ralph working files
+.call_count
+.circuit_breaker_history
+.circuit_breaker_state
+.claude_session_id
+.exit_signals
+.last_reset
+.ralph_session
+.ralph_session_history
+.response_analysis
+logs/
+progress.json
+status.json
+ralph-claude-code/
+
+# Fix plan (temporary)
+@fix_plan.md

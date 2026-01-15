@@ -1,0 +1,329 @@
+/**
+ * Core Endpoint Tests
+ *
+ * Tests for health, blackboard, conflict resolution, and action history routes.
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import endpoint, { recordAction, getActionHistory } from './index';
+
+// Mock router
+function createMockRouter() {
+  const routes: Record<string, Record<string, Function>> = {
+    get: {},
+    post: {},
+    put: {},
+    delete: {},
+  };
+
+  return {
+    routes,
+    get: vi.fn((path: string, handler: Function) => {
+      routes.get[path] = handler;
+    }),
+    post: vi.fn((path: string, handler: Function) => {
+      routes.post[path] = handler;
+    }),
+    put: vi.fn((path: string, handler: Function) => {
+      routes.put[path] = handler;
+    }),
+    delete: vi.fn((path: string, handler: Function) => {
+      routes.delete[path] = handler;
+    }),
+  };
+}
+
+// Mock response
+function createMockResponse() {
+  const res: any = {
+    statusCode: 200,
+    data: null,
+    json: vi.fn((data: any) => {
+      res.data = data;
+      return res;
+    }),
+    status: vi.fn((code: number) => {
+      res.statusCode = code;
+      return res;
+    }),
+  };
+  return res;
+}
+
+// Mock ItemsService for blackboard
+function createMockItemsService() {
+  const store: Record<number, any> = {};
+  let nextId = 1;
+
+  return vi.fn().mockImplementation((collection: string) => {
+    return {
+      readByQuery: vi.fn(async (query: any) => {
+        const projectId = query.filter?.project_id?._eq;
+        if (projectId && store[projectId]) {
+          return [store[projectId]];
+        }
+        return [];
+      }),
+      createOne: vi.fn(async (data: any) => {
+        const id = nextId++;
+        store[data.project_id] = { id, ...data };
+        return id;
+      }),
+      updateOne: vi.fn(async (id: number, data: any) => {
+        for (const projectId of Object.keys(store)) {
+          if (store[Number(projectId)]?.id === id) {
+            store[Number(projectId)] = { ...store[Number(projectId)], ...data };
+            return;
+          }
+        }
+      }),
+      deleteOne: vi.fn(async (id: number) => {}),
+    };
+  });
+}
+
+describe('TB-Core Endpoint', () => {
+  let router: ReturnType<typeof createMockRouter>;
+  let ItemsService: ReturnType<typeof createMockItemsService>;
+
+  beforeEach(() => {
+    router = createMockRouter();
+    ItemsService = createMockItemsService();
+
+    endpoint.handler(router, {
+      services: { ItemsService },
+      logger: { info: vi.fn(), error: vi.fn() },
+    });
+  });
+
+  describe('endpoint metadata', () => {
+    it('has correct id', () => {
+      expect(endpoint.id).toBe('tb-core');
+    });
+  });
+
+  describe('GET /health', () => {
+    it('returns healthy status', async () => {
+      const handler = router.routes.get['/health'];
+      expect(handler).toBeDefined();
+
+      const req = {};
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.status).toBe('healthy');
+      expect(res.data.service).toBe('tb-core');
+      expect(res.data.timestamp).toBeDefined();
+    });
+
+    it('reports API availability', async () => {
+      const handler = router.routes.get['/health'];
+      const res = createMockResponse();
+
+      await handler({}, res);
+
+      expect(res.data).toHaveProperty('anthropicSdkAvailable');
+      expect(res.data).toHaveProperty('openrouterAvailable');
+    });
+  });
+
+  describe('GET /blackboard/:projectId', () => {
+    it('returns 404 when blackboard not found', async () => {
+      const handler = router.routes.get['/blackboard/:projectId'];
+      expect(handler).toBeDefined();
+
+      const req = {
+        params: { projectId: '999' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(404);
+      expect(res.data.error).toBe('Blackboard not found');
+    });
+  });
+
+  describe('GET /conflicts/:projectId', () => {
+    it('returns empty conflicts array for new project', async () => {
+      const handler = router.routes.get['/conflicts/:projectId'];
+      expect(handler).toBeDefined();
+
+      const req = {
+        params: { projectId: '1' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.conflicts).toEqual([]);
+    });
+  });
+
+  describe('POST /resolve-conflict', () => {
+    it('returns 400 when projectId missing', async () => {
+      const handler = router.routes.post['/resolve-conflict'];
+      expect(handler).toBeDefined();
+
+      const req = {
+        body: { conflictId: 'abc123' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('projectId');
+    });
+
+    it('returns 400 when conflictId missing', async () => {
+      const handler = router.routes.post['/resolve-conflict'];
+
+      const req = {
+        body: { projectId: 1 },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('conflictId');
+    });
+
+    it('returns 400 when neither optionId nor customWrites provided', async () => {
+      const handler = router.routes.post['/resolve-conflict'];
+
+      const req = {
+        body: { projectId: 1, conflictId: 'abc123' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('optionId');
+    });
+  });
+
+  describe('GET /outputs/:projectId', () => {
+    it('registers the outputs route', () => {
+      const handler = router.routes.get['/outputs/:projectId'];
+      expect(handler).toBeDefined();
+    });
+  });
+
+  describe('POST /undo', () => {
+    it('returns 400 when conversationId missing', async () => {
+      const handler = router.routes.post['/undo'];
+      expect(handler).toBeDefined();
+
+      const req = {
+        body: {},
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('conversationId');
+    });
+
+    it('returns success:false when no actions to undo', async () => {
+      const handler = router.routes.post['/undo'];
+
+      const req = {
+        body: { conversationId: 'test-conv-empty' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.success).toBe(false);
+      expect(res.data.message).toBe('No actions to undo');
+    });
+  });
+
+  describe('GET /action-history', () => {
+    it('returns 400 when conversationId missing', async () => {
+      const handler = router.routes.get['/action-history'];
+      expect(handler).toBeDefined();
+
+      const req = {
+        query: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('conversationId');
+    });
+
+    it('returns empty array for new conversation', async () => {
+      const handler = router.routes.get['/action-history'];
+
+      const req = {
+        query: { conversationId: 'test-conv-new' },
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.conversationId).toBe('test-conv-new');
+      expect(res.data.actions).toEqual([]);
+      expect(res.data.count).toBe(0);
+    });
+  });
+});
+
+describe('Action History Functions', () => {
+  describe('recordAction', () => {
+    it('records an action with timestamp', () => {
+      const convId = 'test-record-' + Date.now();
+      recordAction(convId, {
+        type: 'create',
+        collection: 'tb_tasks',
+        id: 123,
+        newData: { name: 'Test Task' },
+      });
+
+      const history = getActionHistory(convId);
+      expect(history).toHaveLength(1);
+      expect(history[0].type).toBe('create');
+      expect(history[0].id).toBe(123);
+      expect(history[0].timestamp).toBeDefined();
+    });
+
+    it('appends multiple actions', () => {
+      const convId = 'test-multiple-' + Date.now();
+      recordAction(convId, { type: 'create', collection: 'tb_tasks', id: 1 });
+      recordAction(convId, { type: 'update', collection: 'tb_tasks', id: 1, previousData: { name: 'Old' } });
+      recordAction(convId, { type: 'delete', collection: 'tb_tasks', id: 1, previousData: { name: 'Task' } });
+
+      const history = getActionHistory(convId);
+      expect(history).toHaveLength(3);
+    });
+  });
+
+  describe('getActionHistory', () => {
+    it('returns empty array for unknown conversation', () => {
+      const history = getActionHistory('unknown-conv-id');
+      expect(history).toEqual([]);
+    });
+  });
+});
