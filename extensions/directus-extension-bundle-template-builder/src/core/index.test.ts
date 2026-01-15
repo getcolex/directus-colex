@@ -541,6 +541,286 @@ describe('Skill Registration Endpoints', () => {
   });
 });
 
+describe('Project Files Endpoints', () => {
+  let router: ReturnType<typeof createMockRouter>;
+  let mockProjectFilesService: any;
+  let mockFilesService: any;
+  let mockProjectsService: any;
+
+  function createFileTestItemsService() {
+    return vi.fn().mockImplementation((collection: string) => {
+      if (collection === 'tb_project_files') {
+        return mockProjectFilesService;
+      }
+      if (collection === 'tb_projects') {
+        return mockProjectsService;
+      }
+      // Default mock for other collections
+      return {
+        readByQuery: vi.fn().mockResolvedValue([]),
+        readOne: vi.fn().mockResolvedValue(null),
+        createOne: vi.fn().mockResolvedValue(1),
+        updateOne: vi.fn().mockResolvedValue({}),
+        deleteOne: vi.fn().mockResolvedValue({}),
+      };
+    });
+  }
+
+  beforeEach(() => {
+    router = createMockRouter();
+
+    mockProjectFilesService = {
+      readByQuery: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          project_id: 1,
+          task_id: null,
+          file_type: 'input',
+          date_created: '2024-01-01T00:00:00Z',
+          file_id: {
+            id: 'file-abc',
+            filename_download: 'document.pdf',
+            title: 'Document',
+            type: 'application/pdf',
+            filesize: 12345,
+            uploaded_on: '2024-01-01T00:00:00Z',
+          },
+        },
+      ]),
+      readOne: vi.fn().mockResolvedValue({
+        id: 1,
+        project_id: 1,
+        task_id: null,
+        file_type: 'input',
+        date_created: '2024-01-01T00:00:00Z',
+        file_id: {
+          id: 'file-abc',
+          filename_download: 'document.pdf',
+          title: 'Document',
+          type: 'application/pdf',
+          filesize: 12345,
+        },
+      }),
+      createOne: vi.fn().mockResolvedValue(1),
+      deleteOne: vi.fn().mockResolvedValue({}),
+    };
+
+    mockFilesService = {
+      uploadOne: vi.fn().mockResolvedValue('file-new-123'),
+      deleteOne: vi.fn().mockResolvedValue({}),
+    };
+
+    mockProjectsService = {
+      readOne: vi.fn().mockResolvedValue({ id: 1, name: 'Test Project' }),
+    };
+
+    const ItemsService = createFileTestItemsService();
+    const FilesService = vi.fn().mockImplementation(() => mockFilesService);
+
+    endpoint.handler(router, {
+      services: { ItemsService, FilesService },
+      logger: { info: vi.fn(), error: vi.fn() },
+    });
+  });
+
+  describe('GET /projects/:projectId/files', () => {
+    it('registers the route', () => {
+      const handler = router.routes.get['/projects/:projectId/files'];
+      expect(handler).toBeDefined();
+    });
+
+    it('returns files for a project', async () => {
+      const handler = router.routes.get['/projects/:projectId/files'];
+      const req = {
+        params: { projectId: '1' },
+        query: {},
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.files).toBeDefined();
+      expect(res.data.files).toHaveLength(1);
+      expect(res.data.files[0].id).toBe(1);
+      expect(res.data.files[0].file.filename_download).toBe('document.pdf');
+    });
+
+    it('filters by file_type', async () => {
+      const handler = router.routes.get['/projects/:projectId/files'];
+      const req = {
+        params: { projectId: '1' },
+        query: { file_type: 'template' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      // Verify filter was passed to service
+      expect(mockProjectFilesService.readByQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: expect.objectContaining({
+            file_type: { _eq: 'template' },
+          }),
+        })
+      );
+    });
+
+    it('filters by task_id', async () => {
+      const handler = router.routes.get['/projects/:projectId/files'];
+      const req = {
+        params: { projectId: '1' },
+        query: { task_id: '5' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(mockProjectFilesService.readByQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: expect.objectContaining({
+            task_id: { _eq: 5 },
+          }),
+        })
+      );
+    });
+  });
+
+  describe('POST /projects/:projectId/files', () => {
+    it('registers the route', () => {
+      const handler = router.routes.post['/projects/:projectId/files'];
+      expect(handler).toBeDefined();
+    });
+
+    it('returns 404 when project not found', async () => {
+      mockProjectsService.readOne.mockRejectedValue(new Error('Not found'));
+
+      const handler = router.routes.post['/projects/:projectId/files'];
+      const req = {
+        params: { projectId: '999' },
+        body: { file_type: 'input' },
+        file: { buffer: Buffer.from('test'), originalname: 'test.pdf', mimetype: 'application/pdf' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(404);
+      expect(res.data.error).toBe('Project not found');
+    });
+
+    it('returns 400 when no file uploaded', async () => {
+      const handler = router.routes.post['/projects/:projectId/files'];
+      const req = {
+        params: { projectId: '1' },
+        body: { file_type: 'input' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toBe('No file uploaded');
+    });
+
+    it('returns 400 for invalid file_type', async () => {
+      const handler = router.routes.post['/projects/:projectId/files'];
+      const req = {
+        params: { projectId: '1' },
+        body: { file_type: 'invalid' },
+        file: { buffer: Buffer.from('test'), originalname: 'test.pdf', mimetype: 'application/pdf' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('file_type');
+    });
+
+    it('uploads file and creates project_file record', async () => {
+      const handler = router.routes.post['/projects/:projectId/files'];
+      const req = {
+        params: { projectId: '1' },
+        body: { file_type: 'input', task_id: '5' },
+        file: { buffer: Buffer.from('test content'), originalname: 'test.pdf', mimetype: 'application/pdf' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.success).toBe(true);
+      expect(res.data.id).toBe(1);
+      expect(mockFilesService.uploadOne).toHaveBeenCalled();
+      expect(mockProjectFilesService.createOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          project_id: 1,
+          file_type: 'input',
+          task_id: 5,
+        })
+      );
+    });
+  });
+
+  describe('DELETE /projects/:projectId/files/:fileId', () => {
+    it('registers the route', () => {
+      const handler = router.routes.delete['/projects/:projectId/files/:fileId'];
+      expect(handler).toBeDefined();
+    });
+
+    it('returns 404 when file not found', async () => {
+      mockProjectFilesService.readByQuery.mockResolvedValue([]);
+
+      const handler = router.routes.delete['/projects/:projectId/files/:fileId'];
+      const req = {
+        params: { projectId: '1', fileId: '999' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(404);
+      expect(res.data.error).toContain('not found');
+    });
+
+    it('deletes file association and underlying file', async () => {
+      mockProjectFilesService.readByQuery.mockResolvedValue([
+        { id: 1, project_id: 1, file_id: 'file-abc' },
+      ]);
+
+      const handler = router.routes.delete['/projects/:projectId/files/:fileId'];
+      const req = {
+        params: { projectId: '1', fileId: '1' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.success).toBe(true);
+      expect(res.data.deleted_id).toBe('1');
+      expect(mockProjectFilesService.deleteOne).toHaveBeenCalledWith('1');
+      expect(mockFilesService.deleteOne).toHaveBeenCalledWith('file-abc');
+    });
+  });
+});
+
 describe('Action History Functions', () => {
   describe('recordAction', () => {
     it('records an action with timestamp', () => {

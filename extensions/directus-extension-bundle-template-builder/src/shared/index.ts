@@ -20,3 +20,13 @@ export { formatBlackboardContext } from './format-blackboard-context';
 
 // Tools
 export { ANTHROPIC_TOOLS, type ToolName } from './tools';
+
+// Claude & External Tools
+export {
+  callClaude,
+  callTool,
+  getToolsForMode,
+  executeToolsForTask,
+  CLAUDE_PROXY_URL,
+  TOOLS_SERVER_URL,
+} from './claude';

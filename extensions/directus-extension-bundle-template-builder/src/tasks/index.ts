@@ -5,8 +5,13 @@
  */
 
 import { randomUUID } from 'crypto';
+import { callClaude, executeToolsForTask, createBlackboardService } from '../shared';
 
 const VALID_EDIT_ACTIONS = ['rewrite', 'shorten', 'expand'];
+
+function generateTraceId(): string {
+  return randomUUID().substring(0, 8);
+}
 
 export default {
   id: 'tb-tasks',
@@ -18,14 +23,18 @@ export default {
 
     /**
      * POST /execute-task
-     * Run a task using Claude
+     * Run a task using Claude to generate output
+     * Reads from blackboard for proper data flow between tasks.
      */
     router.post('/execute-task', async (req: any, res: any) => {
+      const traceId = generateTraceId();
       const { taskId, projectId } = req.body;
+
+      console.log(`[TB-Tasks][${traceId}] Execute task ${taskId} for project ${projectId}`);
 
       // Input validation
       if (!taskId || !projectId) {
-        return res.status(400).json({ error: 'taskId and projectId are required' });
+        return res.status(400).json({ error: 'taskId and projectId are required', traceId });
       }
 
       try {
@@ -33,24 +42,236 @@ export default {
           schema: req.schema,
           accountability: req.accountability,
         });
+        const outputsService = new ItemsService('tb_outputs', {
+          schema: req.schema,
+          accountability: req.accountability,
+        });
 
+        // Fetch the task
         const task = await tasksService.readOne(taskId);
 
         if (!task) {
-          return res.status(404).json({ error: 'Task not found' });
+          return res.status(404).json({ error: 'Task not found', traceId });
         }
 
-        // TODO: Implement full task execution logic
-        // For now, return a placeholder response
+        // Read from blackboard for context
+        let blackboardContext: Record<string, any> = {};
+        try {
+          const blackboard = createBlackboardService(ItemsService, req.schema, req.accountability);
+          blackboardContext = await blackboard.getValues(projectId);
+          console.log(`[TB-Tasks][${traceId}] Blackboard context keys: ${Object.keys(blackboardContext).join(', ') || 'none'}`);
+        } catch (bbError: any) {
+          console.log(`[TB-Tasks][${traceId}] Could not read blackboard: ${bbError.message}`);
+        }
+
+        // Fetch previous outputs for context (fallback if blackboard empty)
+        const previousOutputs = await outputsService.readByQuery({
+          filter: { project_id: { _eq: projectId } },
+          sort: ['id'],
+        });
+
+        // Update task status to running
+        await tasksService.updateOne(taskId, { status: 'running' });
+
+        // Create logger for this task
+        const taskLogger = (msg: string) => console.log(`[TB-Tasks][${traceId}] ${msg}`);
+
+        // Execute tools based on tool_mode, passing blackboard context
+        const { toolResults, toolsUsed } = await executeToolsForTask(task, previousOutputs, taskLogger, blackboardContext);
+        taskLogger(`Tools used: ${toolsUsed.join(', ') || 'none'}`);
+
+        // Build previous outputs context
+        let previousOutputsContext = '';
+        if (previousOutputs && previousOutputs.length > 0) {
+          previousOutputsContext = `
+## Previous outputs from this project
+${previousOutputs.map((out: any, i: number) => {
+  const title = out.data?.title || 'Untitled';
+  let content = '';
+  if (typeof out.data?.content === 'string') {
+    content = out.data.content.substring(0, 500);
+  } else if (out.data?.content !== undefined) {
+    content = JSON.stringify(out.data.content).substring(0, 500);
+  } else if (out.data && typeof out.data === 'object') {
+    content = JSON.stringify(out.data).substring(0, 500);
+  } else {
+    content = '[No content]';
+  }
+  return `
+Output ${i + 1} (${out.output_type}):
+Title: ${title}
+Content: ${content}`;
+}).join('\n')}
+`;
+        }
+
+        // Build output type formatting instructions
+        let outputFormatInstructions = '';
+        if (task.output_type) {
+          const formatMap: Record<string, string> = {
+            table: 'Generate output as a JSON array of objects (rows with consistent keys/columns). Example: [{"col1": "val1", "col2": "val2"}, ...]',
+            text: 'Generate output as markdown-formatted text. Use headers, lists, bold, etc. as appropriate.',
+            list: 'Generate output as a JSON array of strings or objects representing list items.',
+            structured: 'Generate output as a structured JSON object with appropriate nested properties.',
+            json: 'Generate output as a structured JSON object with appropriate properties.',
+            colors: 'Return a JSON object with color names as keys and hex codes as values.',
+          };
+          outputFormatInstructions = formatMap[task.output_type] || '';
+        }
+
+        // Build blackboard context section for prompt
+        let blackboardSection = '';
+        if (Object.keys(blackboardContext).length > 0) {
+          blackboardSection = `## Project Data (from blackboard)
+${Object.entries(blackboardContext).map(([key, value]) => {
+  const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+  return `- ${key}: ${valueStr.substring(0, 200)}${valueStr.length > 200 ? '...' : ''}`;
+}).join('\n')}
+`;
+        }
+
+        // Build prompt based on task type
+        const prompt = `You are executing a workflow task. Analyze the provided data and generate structured output.
+
+Task: ${task.name}
+Description: ${task.description}
+Type: ${task.action_type}
+${task.tool_mode ? `Tool Mode: ${task.tool_mode}` : ''}
+${task.output_type ? `Output Type: ${task.output_type}` : ''}
+
+${blackboardSection}
+${toolResults ? `## Tool Results (Real Data)\n${toolResults}\n` : ''}
+${previousOutputsContext}
+
+Based on the task description, project data, and tool results above, generate appropriate output.
+- If tool results include search data, synthesize and summarize the findings
+- If tool results include scraped content, extract relevant information
+- If tool results include images, include them in structured format
+
+${outputFormatInstructions ? `Output Format Instructions:\n${outputFormatInstructions}` : ''}
+
+Format your response as JSON with this structure:
+{
+  "output_type": "${task.output_type || 'text'}",
+  "title": "Output title",
+  "content": "The main output content or data (use the tool results!)",
+  "sources": ["list of URLs used if any"],
+  "tools_used": ${JSON.stringify(toolsUsed)}
+}`;
+
+        const response = await callClaude(prompt, { timeout: 90000 });
+
+        // Parse the output
+        let output;
+        try {
+          const jsonMatch = response.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            output = JSON.parse(jsonMatch[0]);
+          } else {
+            output = {
+              output_type: 'text',
+              title: task.name,
+              content: response,
+            };
+          }
+        } catch {
+          output = {
+            output_type: 'text',
+            title: task.name,
+            content: response,
+          };
+        }
+
+        // Save output
+        const savedOutput = await outputsService.createOne({
+          project_id: projectId,
+          task_id: taskId,
+          output_type: output.output_type,
+          data: output,
+        });
+
+        // Mark previous outputs for this task as superseded
+        const previousOutputsForTask = previousOutputs.filter(
+          (out: any) => out.task_id === taskId && out.id !== savedOutput && !out.superseded_by
+        );
+        for (const oldOutput of previousOutputsForTask) {
+          try {
+            await outputsService.updateOne(oldOutput.id, {
+              superseded_by: savedOutput,
+            });
+            taskLogger(`Superseded old output ${oldOutput.id} with new output ${savedOutput}`);
+          } catch (supersedeError: any) {
+            taskLogger(`Warning: Could not supersede old output ${oldOutput.id}: ${supersedeError.message}`);
+          }
+        }
+
+        // Write task output to blackboard for data flow between tasks
+        try {
+          const blackboard = createBlackboardService(ItemsService, req.schema, req.accountability);
+          const outputFieldsToWrite: Record<string, any> = {};
+
+          if (output.content && typeof output.content === 'object' && !Array.isArray(output.content)) {
+            Object.assign(outputFieldsToWrite, output.content);
+          }
+
+          const taskKey = task.name.toLowerCase().replace(/\s+/g, '_');
+          if (output.content) {
+            outputFieldsToWrite[`${taskKey}_result`] = output.content;
+          }
+          if (output.title) {
+            outputFieldsToWrite[`${taskKey}_title`] = output.title;
+          }
+
+          const hasScrapedWebsite = toolsUsed.includes('scrape');
+          const hasSearchResults = toolsUsed.includes('search');
+          const sourceUrl = blackboardContext.website_url || blackboardContext.website;
+
+          if (Object.keys(outputFieldsToWrite).length > 0) {
+            const { written, skipped } = await blackboard.writeTaskOutput(
+              projectId,
+              `task_${taskId}`,
+              outputFieldsToWrite,
+              { hasScrapedWebsite, hasSearchResults, sourceUrl, basedOnKeys: Object.keys(blackboardContext) }
+            );
+            taskLogger(`Blackboard: wrote ${written.length} entries, skipped ${skipped.length}`);
+          }
+        } catch (bbError: any) {
+          taskLogger(`Failed to write task output to blackboard: ${bbError.message}`);
+        }
+
+        // Update task status to done and link to output
+        await tasksService.updateOne(taskId, { status: 'done', output_id: savedOutput });
+
         res.json({
           success: true,
-          taskId,
-          projectId,
+          output: {
+            id: savedOutput,
+            project_id: projectId,
+            task_id: taskId,
+            output_type: output.output_type,
+            data: output,
+            date_created: new Date().toISOString(),
+          },
           taskStatus: 'done',
-          message: 'Task execution is under construction',
+          traceId,
         });
       } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        console.error(`[TB-Tasks][${traceId}] Execute task error:`, error);
+
+        // Revert task status on error
+        try {
+          const tasksService = new ItemsService('tb_tasks', {
+            schema: req.schema,
+            accountability: req.accountability,
+          });
+          await tasksService.updateOne(taskId, { status: 'pending' });
+        } catch {}
+
+        res.status(500).json({
+          error: 'Failed to execute task',
+          details: error.message,
+          traceId,
+        });
       }
     });
 

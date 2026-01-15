@@ -386,6 +386,232 @@ export default {
       }
     });
 
-    console.log('✓ [TB-Core] Routes registered: /health, /blackboard/:projectId, /conflicts/:projectId, /resolve-conflict, /outputs/:projectId, /undo, /action-history, /register-file-skill, /register-collection-skill, /unregister-skill/:projectId/:skillKey');
+    // ============================================================================
+    // PROJECT FILES: Upload, list, and delete files associated with projects
+    // ============================================================================
+
+    /**
+     * GET /projects/:projectId/files
+     * List all files for a project, optionally filtered by file_type and/or task_id
+     */
+    router.get('/projects/:projectId/files', async (req: any, res: any) => {
+      const { projectId } = req.params;
+      const { file_type, task_id } = req.query;
+
+      try {
+        const projectFilesService = new ItemsService('tb_project_files', {
+          schema: req.schema,
+          accountability: req.accountability,
+        });
+
+        // Build filter
+        const filter: any = { project_id: { _eq: parseInt(projectId, 10) } };
+        if (file_type && ['input', 'template'].includes(file_type)) {
+          filter.file_type = { _eq: file_type };
+        }
+        if (task_id) {
+          filter.task_id = { _eq: parseInt(task_id, 10) };
+        }
+
+        // Fetch files with file details expanded
+        const files = await projectFilesService.readByQuery({
+          filter,
+          sort: ['-date_created'],
+          fields: ['*', 'file_id.*'],
+        });
+
+        // Transform response to include file details
+        const transformedFiles = files.map((f: any) => ({
+          id: f.id,
+          project_id: f.project_id,
+          task_id: f.task_id || null,
+          file_type: f.file_type,
+          date_created: f.date_created,
+          file: f.file_id
+            ? {
+                id: f.file_id.id || f.file_id,
+                filename_download: f.file_id.filename_download,
+                title: f.file_id.title,
+                type: f.file_id.type,
+                filesize: f.file_id.filesize,
+                uploaded_on: f.file_id.uploaded_on,
+              }
+            : null,
+        }));
+
+        res.json({
+          files: transformedFiles,
+          count: transformedFiles.length,
+        });
+      } catch (error: any) {
+        console.error('[TB-Core] List files error:', error);
+        res.status(500).json({
+          error: 'Failed to list files',
+          details: error.message,
+        });
+      }
+    });
+
+    /**
+     * POST /projects/:projectId/files
+     * Upload a file and associate it with a project
+     *
+     * Expects multipart form data with:
+     * - file: The file to upload
+     * - file_type: 'input' | 'template' (defaults to 'input')
+     * - task_id: Optional task ID for input files attached to specific tasks
+     */
+    router.post('/projects/:projectId/files', async (req: any, res: any) => {
+      const { projectId } = req.params;
+
+      try {
+        const { FilesService } = services;
+        const filesService = new FilesService({
+          schema: req.schema,
+          accountability: req.accountability,
+        });
+        const projectFilesService = new ItemsService('tb_project_files', {
+          schema: req.schema,
+          accountability: req.accountability,
+        });
+        const projectsService = new ItemsService('tb_projects', {
+          schema: req.schema,
+          accountability: req.accountability,
+        });
+
+        // Verify project exists
+        try {
+          await projectsService.readOne(parseInt(projectId, 10));
+        } catch {
+          return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // Get file_type from body (form data or JSON)
+        const fileType = req.body?.file_type || 'input';
+        if (!['input', 'template'].includes(fileType)) {
+          return res.status(400).json({ error: 'file_type must be "input" or "template"' });
+        }
+
+        // Get optional task_id from body
+        const taskId = req.body?.task_id ? parseInt(req.body.task_id, 10) : null;
+
+        // Check for uploaded file
+        if (!req.file && !req.files) {
+          return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const uploadedFile = req.file || (req.files && req.files[0]);
+
+        // Create the file in directus_files
+        const fileId = await filesService.uploadOne(uploadedFile.buffer || uploadedFile.stream, {
+          filename_download: uploadedFile.originalname || uploadedFile.filename,
+          type: uploadedFile.mimetype,
+          title: uploadedFile.originalname || uploadedFile.filename,
+          storage: 'local',
+        });
+
+        // Create the junction record
+        const projectFile = await projectFilesService.createOne({
+          project_id: parseInt(projectId, 10),
+          file_id: fileId,
+          file_type: fileType,
+          task_id: taskId,
+        });
+
+        // Fetch the complete record with file details
+        const completeRecord = await projectFilesService.readOne(projectFile, {
+          fields: ['*', 'file_id.*'],
+        });
+
+        res.json({
+          success: true,
+          id: projectFile,
+          project_file: {
+            id: completeRecord.id,
+            project_id: completeRecord.project_id,
+            task_id: completeRecord.task_id || null,
+            file_type: completeRecord.file_type,
+            date_created: completeRecord.date_created,
+            file: completeRecord.file_id
+              ? {
+                  id: completeRecord.file_id.id || completeRecord.file_id,
+                  filename_download: completeRecord.file_id.filename_download,
+                  title: completeRecord.file_id.title,
+                  type: completeRecord.file_id.type,
+                  filesize: completeRecord.file_id.filesize,
+                }
+              : null,
+          },
+        });
+      } catch (error: any) {
+        console.error('[TB-Core] Upload file error:', error);
+        res.status(500).json({
+          error: 'Failed to upload file',
+          details: error.message,
+        });
+      }
+    });
+
+    /**
+     * DELETE /projects/:projectId/files/:fileId
+     * Delete a file association from a project
+     * Also deletes the underlying file from directus_files
+     */
+    router.delete('/projects/:projectId/files/:fileId', async (req: any, res: any) => {
+      const { projectId, fileId } = req.params;
+
+      try {
+        const { FilesService } = services;
+        const filesService = new FilesService({
+          schema: req.schema,
+          accountability: req.accountability,
+        });
+        const projectFilesService = new ItemsService('tb_project_files', {
+          schema: req.schema,
+          accountability: req.accountability,
+        });
+
+        // Find the project file record
+        const projectFiles = await projectFilesService.readByQuery({
+          filter: {
+            id: { _eq: fileId },
+            project_id: { _eq: parseInt(projectId, 10) },
+          },
+        });
+
+        if (!projectFiles || projectFiles.length === 0) {
+          return res.status(404).json({ error: 'File not found in project' });
+        }
+
+        const projectFile = projectFiles[0];
+        const directusFileId = projectFile.file_id;
+
+        // Delete the junction record first
+        await projectFilesService.deleteOne(fileId);
+
+        // Delete the actual file from directus_files
+        if (directusFileId) {
+          try {
+            await filesService.deleteOne(directusFileId);
+          } catch (fileDeleteError: any) {
+            // Log but don't fail - the junction record is already deleted
+            console.warn(`[TB-Core] Could not delete directus file ${directusFileId}:`, fileDeleteError.message);
+          }
+        }
+
+        res.json({
+          success: true,
+          deleted_id: fileId,
+        });
+      } catch (error: any) {
+        console.error('[TB-Core] Delete file error:', error);
+        res.status(500).json({
+          error: 'Failed to delete file',
+          details: error.message,
+        });
+      }
+    });
+
+    console.log('✓ [TB-Core] Routes registered: /health, /blackboard/:projectId, /conflicts/:projectId, /resolve-conflict, /outputs/:projectId, /undo, /action-history, /register-file-skill, /register-collection-skill, /unregister-skill/:projectId/:skillKey, /projects/:projectId/files');
   },
 };
