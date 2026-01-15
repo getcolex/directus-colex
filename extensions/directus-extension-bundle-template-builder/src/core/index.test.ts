@@ -291,6 +291,256 @@ describe('TB-Core Endpoint', () => {
   });
 });
 
+describe('Skill Registration Endpoints', () => {
+  let router: ReturnType<typeof createMockRouter>;
+  let mockFilesService: any;
+  let mockBlackboardService: any;
+  let mockCollectionService: any;
+
+  function createSkillTestItemsService() {
+    return vi.fn().mockImplementation((collection: string) => {
+      if (collection === 'directus_files') {
+        return mockFilesService;
+      }
+      if (collection === 'tb_blackboard') {
+        return mockBlackboardService;
+      }
+      return mockCollectionService;
+    });
+  }
+
+  beforeEach(() => {
+    router = createMockRouter();
+
+    mockFilesService = {
+      readOne: vi.fn().mockResolvedValue({
+        id: 'file-123',
+        filename_download: 'brand-guidelines.pdf',
+        type: 'application/pdf',
+      }),
+    };
+
+    mockBlackboardService = {
+      readByQuery: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          project_id: 1,
+          entries: {},
+          conflicts: [],
+        },
+      ]),
+      updateOne: vi.fn().mockResolvedValue({}),
+    };
+
+    mockCollectionService = {
+      readByQuery: vi.fn().mockResolvedValue([{ count: 100 }]),
+    };
+
+    const ItemsService = createSkillTestItemsService();
+
+    endpoint.handler(router, {
+      services: { ItemsService },
+      logger: { info: vi.fn(), error: vi.fn() },
+    });
+  });
+
+  describe('POST /register-file-skill', () => {
+    it('registers the route', () => {
+      const handler = router.routes.post['/register-file-skill'];
+      expect(handler).toBeDefined();
+    });
+
+    it('returns 400 when projectId is missing', async () => {
+      const handler = router.routes.post['/register-file-skill'];
+      const req = {
+        body: { fileId: 'file-123', skillKey: '@doc', summary: 'A document' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('projectId');
+    });
+
+    it('returns 400 when fileId is missing', async () => {
+      const handler = router.routes.post['/register-file-skill'];
+      const req = {
+        body: { projectId: 1, skillKey: '@doc', summary: 'A document' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('fileId');
+    });
+
+    it('returns 400 when skillKey is missing', async () => {
+      const handler = router.routes.post['/register-file-skill'];
+      const req = {
+        body: { projectId: 1, fileId: 'file-123', summary: 'A document' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('skillKey');
+    });
+
+    it('returns 400 when summary is missing', async () => {
+      const handler = router.routes.post['/register-file-skill'];
+      const req = {
+        body: { projectId: 1, fileId: 'file-123', skillKey: '@doc' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('summary');
+    });
+
+    it('returns success when all params provided', async () => {
+      const handler = router.routes.post['/register-file-skill'];
+      const req = {
+        body: {
+          projectId: 1,
+          fileId: 'file-123',
+          skillKey: '@brand_guidelines',
+          summary: 'Brand guidelines document',
+        },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.success).toBe(true);
+      expect(res.data.skillKey).toBe('@brand_guidelines');
+    });
+  });
+
+  describe('POST /register-collection-skill', () => {
+    it('registers the route', () => {
+      const handler = router.routes.post['/register-collection-skill'];
+      expect(handler).toBeDefined();
+    });
+
+    it('returns 400 when projectId is missing', async () => {
+      const handler = router.routes.post['/register-collection-skill'];
+      const req = {
+        body: { collection: 'customers', skillKey: '@customers', summary: 'Customer data' },
+        schema: { collections: { customers: { fields: {} } } },
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('projectId');
+    });
+
+    it('returns 400 when collection is missing', async () => {
+      const handler = router.routes.post['/register-collection-skill'];
+      const req = {
+        body: { projectId: 1, skillKey: '@customers', summary: 'Customer data' },
+        schema: { collections: {} },
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('collection');
+    });
+
+    it('returns 400 when skillKey is missing', async () => {
+      const handler = router.routes.post['/register-collection-skill'];
+      const req = {
+        body: { projectId: 1, collection: 'customers', summary: 'Customer data' },
+        schema: { collections: { customers: { fields: {} } } },
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('skillKey');
+    });
+
+    it('returns 400 when summary is missing', async () => {
+      const handler = router.routes.post['/register-collection-skill'];
+      const req = {
+        body: { projectId: 1, collection: 'customers', skillKey: '@customers' },
+        schema: { collections: { customers: { fields: {} } } },
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.data.error).toContain('summary');
+    });
+
+    it('returns success when all params provided', async () => {
+      const handler = router.routes.post['/register-collection-skill'];
+      const req = {
+        body: {
+          projectId: 1,
+          collection: 'customers',
+          skillKey: '@customers',
+          summary: 'Customer database',
+        },
+        schema: { collections: { customers: { fields: { id: { type: 'integer' } } } } },
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.success).toBe(true);
+      expect(res.data.skillKey).toBe('@customers');
+    });
+  });
+
+  describe('DELETE /unregister-skill/:projectId/:skillKey', () => {
+    it('registers the route', () => {
+      const handler = router.routes.delete['/unregister-skill/:projectId/:skillKey'];
+      expect(handler).toBeDefined();
+    });
+
+    it('returns error when skill not found', async () => {
+      const handler = router.routes.delete['/unregister-skill/:projectId/:skillKey'];
+      const req = {
+        params: { projectId: '1', skillKey: '@nonexistent' },
+        schema: {},
+        accountability: {},
+      };
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res.data.success).toBe(false);
+      expect(res.data.error).toContain('not found');
+    });
+  });
+});
+
 describe('Action History Functions', () => {
   describe('recordAction', () => {
     it('records an action with timestamp', () => {

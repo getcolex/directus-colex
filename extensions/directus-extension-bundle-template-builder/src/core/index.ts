@@ -4,7 +4,11 @@
  * Health, blackboard, conflict resolution, outputs, and action history routes.
  */
 
-import { createBlackboardService } from '../shared';
+import {
+  createBlackboardService,
+  createFileSkillService,
+  createCollectionSkillService,
+} from '../shared';
 
 // Action history for undo/redo functionality
 interface UndoableAction {
@@ -264,6 +268,124 @@ export default {
       });
     });
 
-    console.log('✓ [TB-Core] Routes registered: /health, /blackboard/:projectId, /conflicts/:projectId, /resolve-conflict, /outputs/:projectId, /undo, /action-history');
+    /**
+     * POST /register-file-skill
+     * Register a file as a blackboard skill
+     */
+    router.post('/register-file-skill', async (req: any, res: any) => {
+      const { projectId, fileId, skillKey, summary, pageCount, extractedText } = req.body;
+
+      // Input validation
+      if (!projectId) {
+        return res.status(400).json({ error: 'projectId is required' });
+      }
+      if (!fileId) {
+        return res.status(400).json({ error: 'fileId is required' });
+      }
+      if (!skillKey) {
+        return res.status(400).json({ error: 'skillKey is required' });
+      }
+      if (!summary) {
+        return res.status(400).json({ error: 'summary is required' });
+      }
+
+      try {
+        const fileSkillService = createFileSkillService(
+          ItemsService,
+          req.schema,
+          req.accountability
+        );
+
+        const result = await fileSkillService.registerFileSkill({
+          projectId,
+          fileId,
+          skillKey,
+          summary,
+          pageCount,
+          extractedText,
+        });
+
+        if (result.success) {
+          res.json(result);
+        } else {
+          res.status(400).json(result);
+        }
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    /**
+     * POST /register-collection-skill
+     * Register a Directus collection as a blackboard skill
+     */
+    router.post('/register-collection-skill', async (req: any, res: any) => {
+      const { projectId, collection, skillKey, summary } = req.body;
+
+      // Input validation
+      if (!projectId) {
+        return res.status(400).json({ error: 'projectId is required' });
+      }
+      if (!collection) {
+        return res.status(400).json({ error: 'collection is required' });
+      }
+      if (!skillKey) {
+        return res.status(400).json({ error: 'skillKey is required' });
+      }
+      if (!summary) {
+        return res.status(400).json({ error: 'summary is required' });
+      }
+
+      try {
+        const collectionSkillService = createCollectionSkillService(
+          ItemsService,
+          req.schema,
+          req.accountability
+        );
+
+        const result = await collectionSkillService.registerCollectionSkill({
+          projectId,
+          collection,
+          skillKey,
+          summary,
+        });
+
+        if (result.success) {
+          res.json(result);
+        } else {
+          res.status(400).json(result);
+        }
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    /**
+     * DELETE /unregister-skill/:projectId/:skillKey
+     * Unregister a skill from the blackboard
+     */
+    router.delete('/unregister-skill/:projectId/:skillKey', async (req: any, res: any) => {
+      const { projectId, skillKey } = req.params;
+
+      try {
+        // Try file skill service first (it handles both types via blackboard)
+        const fileSkillService = createFileSkillService(
+          ItemsService,
+          req.schema,
+          req.accountability
+        );
+
+        const result = await fileSkillService.unregisterFileSkill({
+          projectId: parseInt(projectId),
+          skillKey,
+        });
+
+        res.json(result);
+      } catch (error: any) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    console.log('✓ [TB-Core] Routes registered: /health, /blackboard/:projectId, /conflicts/:projectId, /resolve-conflict, /outputs/:projectId, /undo, /action-history, /register-file-skill, /register-collection-skill, /unregister-skill/:projectId/:skillKey');
   },
 };
